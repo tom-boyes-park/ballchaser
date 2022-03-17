@@ -24,10 +24,10 @@ jobs:
         poetry install
     - name: black
       run: |
-        black ballchaser --check
+        poetry run black ballchaser --check
     - name: isort
       run: |
-        isort ballchaser --check
+        poetry run isort ballchaser --check
     - name: flake8
       run: |
-        flake8 ballchaser
+        poetry run flake8 ballchaser
