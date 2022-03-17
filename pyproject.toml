@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "ballchaser"
+version = "0.1.0"
+description = "Unofficial Python API client for the ballchasing.com API."
+authors = ["Tom Boyes-Park"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/tom-boyes-park/ballchaser"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.27.1"
+
+[tool.poetry.dev-dependencies]
+black = "^22.1.0"
+isort = "^5.10.1"
+flake8 = "^4.0.1"
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+atomic = true
+combine_as_imports = true
+include_trailing_comma = true
+line_length = 88
+multi_line_output = 3
+use_parentheses = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
