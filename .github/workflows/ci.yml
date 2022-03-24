@@ -1,4 +1,4 @@
-name: CI Workflow
+name: Lint
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
 
 jobs:
   build:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -21,14 +22,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install poetry
     - name: Install dependencies
-      run: |
-        poetry install
+      run: poetry install
     - name: black
-      run: |
-        poetry run black ballchaser --check
+      run: poetry run black ballchaser --check
     - name: isort
-      run: |
-        poetry run isort ballchaser --check
+      run: poetry run isort ballchaser --check
     - name: flake8
-      run: |
-        poetry run flake8 ballchaser
+      run: poetry run flake8 ballchaser
