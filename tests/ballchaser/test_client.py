@@ -28,7 +28,7 @@ def test_ball_chaser_init(
 ):
     with RequestsMocker() as rm, exception:
         rm.get(
-            "https://ballchasing.com/api/", status_code=mock_status_code, json=mock_json
+            "https://ballchasing.com/api", status_code=mock_status_code, json=mock_json
         )
         ball_chaser = BallChaser("abc-123")
         assert ball_chaser.patronage == mock_json["type"]
