@@ -30,4 +30,4 @@ jobs:
     - name: flake8
       run: poetry run flake8 ballchaser
     - name: Unit Tests
-      run: poetry run pytest tests
+      run: poetry run pytest tests --cov ballchaser
