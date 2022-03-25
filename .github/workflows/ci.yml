@@ -1,4 +1,4 @@
-name: Lint
+name: Lint & Test
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Lint
+    name: Lint & Test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -29,3 +29,5 @@ jobs:
       run: poetry run isort ballchaser --check
     - name: flake8
       run: poetry run flake8 ballchaser
+    - name: Unit Tests
+      run: poetry run pytest tests
