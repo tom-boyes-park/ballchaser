@@ -1,8 +1,10 @@
+from typing import Dict
+
 from requests import Session
 
 
 class BallChaser:
-    _bc_url = "https://ballchasing.com/api/"
+    _bc_url = "https://ballchasing.com/api"
 
     def __init__(self, token: str):
         self.session = Session()
@@ -18,3 +20,12 @@ class BallChaser:
         if not r.status_code == 200:
             raise Exception(r.json()["error"])
         self.patronage = r.json()["type"]
+
+    def get_maps(self) -> Dict:
+        """
+        Get dict of map codes to map names (map as in stadium).
+        """
+        response = self.session.get(f"{self._bc_url}/maps")
+        if not response.status_code == 200:
+            raise Exception(response.text)
+        return response.json()
