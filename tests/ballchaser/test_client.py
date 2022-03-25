@@ -46,19 +46,16 @@ def test_ball_chaser_init(
     ),
 )
 def test_ball_chaser_get_maps(
-    mock_status_code: int, mock_json: Dict, exception: ContextManager
+    mock_status_code: int,
+    mock_json: Dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
 ):
     with RequestsMocker() as rm, exception:
-        rm.get(
-            "https://ballchasing.com/api",
-            status_code=200,
-            json={"chaser": True, "type": "regular"},
-        )
         rm.get(
             "https://ballchasing.com/api/maps",
             status_code=mock_status_code,
             json=mock_json,
         )
-        ball_chaser = BallChaser("abc-123")
         actual = ball_chaser.get_maps()
         assert actual == mock_json
