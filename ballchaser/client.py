@@ -11,7 +11,7 @@ class BallChaser:
         self.session.headers["Authorization"] = token
         self.__set_patronage()
 
-    def __set_patronage(self):
+    def __set_patronage(self) -> None:
         """
         Determine and set patron level so that we know what rate limits to apply
         when hitting endpoints.
