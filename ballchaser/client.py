@@ -1,4 +1,5 @@
-from typing import Dict
+from datetime import datetime
+from typing import Dict, Optional, Union
 
 from requests import Session
 
@@ -29,3 +30,98 @@ class BallChaser:
         if not response.status_code == 200:
             raise Exception(response.text)
         return response.json()
+
+    # TODO: use Enums for args where appropriate
+    # TODO: implement rate limiting based on patronage
+    def get_replays(
+        self,
+        player_name: Optional[Union[str, list]] = None,
+        player_id: Optional[Union[str, list]] = None,
+        title: Optional[str] = None,
+        playlist: Optional[Union[str, list]] = None,
+        season: Optional[str] = None,
+        match_result: Optional[str] = None,
+        min_rank: Optional[str] = None,
+        max_rank: Optional[str] = None,
+        pro: Optional[bool] = None,
+        uploader: Optional[str] = None,
+        group: Optional[str] = None,
+        map_code: Optional[str] = None,
+        created_before: Optional[datetime] = None,
+        created_after: Optional[datetime] = None,
+        replay_date_before: Optional[datetime] = None,
+        replay_date_after: Optional[datetime] = None,
+        count: Optional[int] = None,
+        sort_by: Optional[int] = None,
+        sort_dir: Optional[int] = None,
+    ):
+        """
+        Filter and retrieve replays. At least one of player_name or player_id must be
+        supplied.
+
+        Args:
+            player_name: filter replays by a player’s name
+                (can supply a single player name as a str, or multiple player names via
+                list of strings)
+            player_id: filter replays by a player’s platform id in the $platform:$id
+                (can supply a single player id as a str, or multiple player ids via list
+                of strings)
+            title: replay title
+            playlist: filter replays by one or more playlists (string or list of strings
+                respectively)
+            season: filter replays by season. Must be a number between 1 and 14 (for
+                old seasons) or f1, f2, etc. for the new free to play seasons
+            match_result: filter replays by result ('win' or 'loss')
+            min_rank: filter replays based on players minimum rank
+            max_rank: filter replays based on players maximum rank
+            pro: only include replays containing at least one pro player
+            uploader: only include replays uploaded by the specified user, accepts
+                either the numerical 76*************44 steam id, or the special value me
+            group: only include replays belonging to the specified group, this only
+                includes replays immediately under the specified group, but not replays
+                in child groups
+            map_code: only include replays in the specified map, use `get_maps` to
+                retrieve valid map codes
+            created_before: only include replays created before this date
+            created_after: only include replays created after this date
+            replay_date_before: only include replays for games before this date
+            replay_date_after: only include replays for games after this date
+            count: number of replays to retrieve (max 200) in each batch
+            sort_by: how to sort replays ('replay-date' or 'upload-date')
+            sort_dir: sort direction ('asc' or 'desc')
+
+        Returns:
+            dict containing replays
+        """
+        if not player_name and not player_id:
+            raise Exception(
+                "At least one of 'player_name' or 'player_id' must be supplied"
+            )
+
+        params = {
+            "title": title,
+            "player-name": player_name,
+            "player-id": player_id,
+            "playlist": playlist,
+            "season": season,
+            "match-result": match_result,
+            "min-rank": min_rank,
+            "max-rank": max_rank,
+            "pro": pro,
+            "uploader": uploader,
+            "group": group,
+            "map": map_code,
+            "created-before": created_before.isoformat(),
+            "created-after": created_after.isoformat(),
+            "replay-date-before": replay_date_before.isoformat(),
+            "replay-date-after": replay_date_after.isoformat(),
+            "count": count,
+            "sort-by": sort_by,
+            "sort-dir": sort_dir,
+        }
+        r = self.session.get(f"{self._bc_url}/replays", params=params)
+        if not r.status_code == 200:
+            raise Exception(r.text)
+
+        # TODO: check for "next" url and iterate through all results
+        return r.json()

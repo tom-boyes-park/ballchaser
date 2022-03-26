@@ -59,3 +59,45 @@ def test_ball_chaser_get_maps(
         )
         actual = ball_chaser.get_maps()
         assert actual == mock_json
+
+
+def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
+    with pytest.raises(
+        Exception, match="At least one of 'player_name' or 'player_id' must be supplied"
+    ):
+        ball_chaser.get_replays()
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (
+            200,
+            {
+                "count": 123,
+                "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                "next": "url",
+            },
+            does_not_raise(),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+    ),
+)
+def test_ball_chaser_get_replays(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get(
+            "https://ballchasing.com/api/replays",
+            status_code=mock_status_code,
+            json=mock_json,
+        )
+        actual = ball_chaser.get_replays(player_name="GarrettG", pro=True)
+        assert actual == mock_json

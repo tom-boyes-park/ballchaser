@@ -1,8 +1,8 @@
 """ Contains fixtures used in unit tests. """
-from ballchaser.client import BallChaser
-
-from requests_mock import Mocker as RequestsMocker
 import pytest
+from requests_mock import Mocker as RequestsMocker
+
+from ballchaser.client import BallChaser
 
 
 @pytest.fixture()
