@@ -109,35 +109,142 @@ def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
 
 
 @pytest.mark.parametrize(
-    argnames=["mock_status_code", "mock_json", "exception"],
+    argnames=["replay_count", "mock_responses", "expected", "exception"],
     argvalues=(
         (
-            200,
-            {
-                "count": 123,
-                "list": [{"id": "abc-123"}, {"id": "def-456"}],
-                "next": "url",
-            },
+            1,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/replays",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+            ],
             does_not_raise(),
         ),
         (
-            500,
-            {"error": "Internal server error."},
+            4,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/replays",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+                {"id": "def-456"},
+                {"id": "ghi-789"},
+                {"id": "jkl-101"},
+            ],
+            does_not_raise(),
+        ),
+        (
+            100,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/replays",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+                {"id": "def-456"},
+                {"id": "ghi-789"},
+                {"id": "jkl-101"},
+            ],
+            does_not_raise(),
+        ),
+        (
+            10,
+            [
+                {
+                    "status_code": 200,
+                    "json": {"list": []},
+                }
+            ],
+            [],
+            does_not_raise(),
+        ),
+        (
+            10,
+            [
+                {
+                    "status_code": 500,
+                    "json": {"error": "Internal server error."},
+                }
+            ],
+            None,
             pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+        (
+            4,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/replays",
+                    },
+                },
+                {
+                    "status_code": 500,
+                    "json": {"error": "What a save!"},
+                },
+            ],
+            None,
+            pytest.raises(Exception, match='{"error": "What a save!"}'),
         ),
     ),
 )
 def test_ball_chaser_get_replays(
-    mock_status_code: int,
-    mock_json: dict,
+    replay_count: int,
+    mock_responses: list,
+    expected: dict,
     exception: ContextManager,
     ball_chaser: BallChaser,
 ):
     with RequestsMocker() as rm, exception:
-        rm.get(
-            "https://ballchasing.com/api/replays",
-            status_code=mock_status_code,
-            json=mock_json,
-        )
-        actual = ball_chaser.get_replays(player_name="GarrettG", pro=True)
-        assert actual == mock_json
+        rm.get("https://ballchasing.com/api/replays", response_list=mock_responses)
+        actual = [
+            replay
+            for replay in ball_chaser.get_replays(
+                player_name="GarrettG", replay_count=replay_count
+            )
+        ]
+        assert actual == expected

@@ -63,6 +63,7 @@ class BallChaser:
         self,
         player_name: Optional[Union[str, list]] = None,
         player_id: Optional[Union[str, list]] = None,
+        replay_count: Optional[int] = 50,
         title: Optional[str] = None,
         playlist: Optional[Union[str, list]] = None,
         season: Optional[str] = None,
@@ -100,6 +101,7 @@ class BallChaser:
             player_id: filter replays by a player’s platform id in the $platform:$id
                 (can supply a single player id as a str, or multiple player ids via list
                 of strings)
+            replay_count: number of replays to retrieve
             title: replay title
             playlist: filter replays by one or more playlists (string or list of strings
                 respectively)
@@ -125,7 +127,7 @@ class BallChaser:
             sort_dir: sort direction ('asc' or 'desc')
 
         Returns:
-            dict containing replays
+            iterator of replay dicts
         """
         if not player_name and not player_id:
             raise Exception(
@@ -174,8 +176,20 @@ class BallChaser:
         if not r.status_code == 200:
             raise Exception(r.text)
 
-        # TODO: check for "next" url and iterate through all results
-        return r.json()
+        replays = r.json()["list"]
+        yield from replays[:replay_count]
+
+        remaining = replay_count - len(replays)
+        while remaining > 0 and "next" in r.json():
+            r = self.session.get(
+                r.json()["next"], params={"count": min(remaining, 200)}
+            )
+            if not r.status_code == 200:
+                raise Exception(r.text)
+
+            replays = r.json()["list"]
+            yield from replays[:remaining]
+            remaining = replay_count - len(replays)
 
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"
