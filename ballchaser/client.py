@@ -176,3 +176,6 @@ class BallChaser:
 
         # TODO: check for "next" url and iterate through all results
         return r.json()
+
+    def __repr__(self):
+        return f"BallChaser(patronage={self.patronage})"
