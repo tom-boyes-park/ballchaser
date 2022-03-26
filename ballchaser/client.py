@@ -31,6 +31,30 @@ class BallChaser:
             raise Exception(response.text)
         return response.json()
 
+    def get_replay(self, replay_id: str) -> Dict:
+        """
+        Retrieve the details and stats of the supplied replay id.
+
+        This endpoint is rate limited to:
+
+        - GC patrons: 16 calls/second
+        - Champion patrons: 8 calls/second
+        - Diamond patrons: 4 calls/second, 5000/hour
+        - Gold patrons: 2 calls/second, 2000/hour
+        - All others: 2 calls/second, 1000/hour
+
+        Args:
+            replay_id: unique identifier of replay to retrieve
+
+        Returns:
+            dict containing replay details and stats
+        """
+        r = self.session.get(f"{self._bc_url}/replays/{replay_id}")
+        if not r.status_code == 200:
+            raise Exception(r.text)
+
+        return r.json()
+
     # TODO: use Enums for args where appropriate
     # TODO: implement rate limiting based on patronage
     def get_replays(
