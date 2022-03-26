@@ -4,6 +4,9 @@ from typing import Dict, Optional, Union
 from requests import Session
 
 
+# TODO: wrap request logic into class method that checks 200 status code and raises
+#   Exception
+# TODO: implement rate limiting based on patronage
 class BallChaser:
     _bc_url = "https://ballchasing.com/api"
 
@@ -56,7 +59,6 @@ class BallChaser:
         return r.json()
 
     # TODO: use Enums for args where appropriate
-    # TODO: implement rate limiting based on patronage
     def get_replays(
         self,
         player_name: Optional[Union[str, list]] = None,
@@ -78,10 +80,18 @@ class BallChaser:
         count: Optional[int] = None,
         sort_by: Optional[int] = None,
         sort_dir: Optional[int] = None,
-    ):
+    ) -> Dict:
         """
         Filter and retrieve replays. At least one of player_name or player_id must be
         supplied.
+
+        This endpoint is rate limited to:
+
+        - GC patrons: 16 calls/second
+        - Champion patrons: 8 calls/second
+        - Diamond patrons: 4 calls/second, 2000/hour
+        - Gold patrons: 2 calls/second, 1000/hour
+        - All others: 2 calls/second, 500/hour
 
         Args:
             player_name: filter replays by a player’s name
