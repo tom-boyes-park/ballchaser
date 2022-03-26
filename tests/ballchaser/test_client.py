@@ -2,6 +2,7 @@ from contextlib import nullcontext as does_not_raise
 from typing import ContextManager, Dict
 
 import pytest
+from requests import Response
 from requests_mock import Mocker as RequestsMocker
 
 from ballchaser.client import BallChaser
@@ -32,6 +33,36 @@ def test_ball_chaser_init(
         )
         ball_chaser = BallChaser("abc-123")
         assert ball_chaser.patronage == mock_json["type"]
+
+
+@pytest.mark.parametrize(
+    argnames=["url", "mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        ("http://abc.com", 200, {"map_1": "Map 1", "map_2": "Map 2"}, does_not_raise()),
+        (
+            "http://def.com",
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+    ),
+)
+def test_ball_chaser__request(
+    url: str,
+    mock_status_code: int,
+    mock_json: Dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get(
+            url=url,
+            status_code=mock_status_code,
+            json=mock_json,
+        )
+        actual = ball_chaser._request("GET", url, {"a": 1})
+        assert isinstance(actual, Response)
+        assert actual.json() == mock_json
 
 
 @pytest.mark.parametrize(
