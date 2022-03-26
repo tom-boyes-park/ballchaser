@@ -5,6 +5,7 @@ Unofficial Python API client for the ballchasing.com API.
 ```commandline
 pip install ballchaser
 ```
+
 All API requests are exposed via the `BallChaser` class which is initialised with a [ballchasing.com API token](https://ballchasing.com/doc/api#header-authentication).
 
 ```python
