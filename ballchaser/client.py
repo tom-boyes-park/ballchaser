@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Optional, Union
+from typing import Dict, Iterator, Optional, Union
 
 from requests import Session
 
@@ -81,7 +81,7 @@ class BallChaser:
         count: Optional[int] = None,
         sort_by: Optional[int] = None,
         sort_dir: Optional[int] = None,
-    ) -> Dict:
+    ) -> Iterator:
         """
         Filter and retrieve replays. At least one of player_name or player_id must be
         supplied.

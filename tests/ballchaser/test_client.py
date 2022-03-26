@@ -105,7 +105,7 @@ def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
     with pytest.raises(
         Exception, match="At least one of 'player_name' or 'player_id' must be supplied"
     ):
-        ball_chaser.get_replays()
+        next(ball_chaser.get_replays())
 
 
 @pytest.mark.parametrize(
