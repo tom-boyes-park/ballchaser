@@ -18,8 +18,8 @@ class BallChaser:
         Determine and set patron level so that we know what rate limits to apply
         when hitting endpoints.
         """
-        r = self._request("GET", self._bc_url)
-        self.patronage = r.json()["type"]
+        response = self.ping()
+        self.patronage = response["type"]
 
     def _request(
         self, method: str, url: str, params: Optional[Dict[str, Any]] = None
@@ -40,6 +40,13 @@ class BallChaser:
             raise Exception(response.text)
 
         return response
+
+    def ping(self) -> Dict:
+        """
+        Can be used to check if your API key is correct and if ballchasing API is
+        reachable.
+        """
+        return self._request('GET', self._bc_url).json()
 
     def get_maps(self) -> Dict:
         """
