@@ -1,11 +1,9 @@
 from datetime import datetime
-from typing import Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, Optional, Union
 
-from requests import Session
+from requests import Response, Session
 
 
-# TODO: wrap request logic into class method that checks 200 status code and raises
-#   Exception
 # TODO: implement rate limiting based on patronage
 class BallChaser:
     _bc_url = "https://ballchasing.com/api"
@@ -20,19 +18,34 @@ class BallChaser:
         Determine and set patron level so that we know what rate limits to apply
         when hitting endpoints.
         """
-        r = self.session.get(self._bc_url)
-        if not r.status_code == 200:
-            raise Exception(r.json()["error"])
+        r = self._request("GET", self._bc_url)
         self.patronage = r.json()["type"]
+
+    def _request(
+        self, method: str, url: str, params: Optional[Dict[str, Any]] = None
+    ) -> Response:
+        """
+        Helper method for API requests.
+
+        Args:
+            method: HTTP method for request
+            url: request url
+            params: request parameters
+
+        Returns:
+            Response
+        """
+        response = self.session.request(url=url, method=method, params=params)
+        if not response.status_code == 200:
+            raise Exception(response.text)
+
+        return response
 
     def get_maps(self) -> Dict:
         """
         Get dict of map codes to map names (map as in stadium).
         """
-        response = self.session.get(f"{self._bc_url}/maps")
-        if not response.status_code == 200:
-            raise Exception(response.text)
-        return response.json()
+        return self._request("GET", f"{self._bc_url}/maps").json()
 
     def get_replay(self, replay_id: str) -> Dict:
         """
@@ -52,11 +65,7 @@ class BallChaser:
         Returns:
             dict containing replay details and stats
         """
-        r = self.session.get(f"{self._bc_url}/replays/{replay_id}")
-        if not r.status_code == 200:
-            raise Exception(r.text)
-
-        return r.json()
+        return self._request("GET", f"{self._bc_url}/replays/{replay_id}").json()
 
     # TODO: use Enums for args where appropriate
     def get_replays(
@@ -172,20 +181,16 @@ class BallChaser:
             "sort-by": sort_by,
             "sort-dir": sort_dir,
         }
-        r = self.session.get(f"{self._bc_url}/replays", params=params)
-        if not r.status_code == 200:
-            raise Exception(r.text)
+        r = self._request("GET", f"{self._bc_url}/replays", params=params)
 
         replays = r.json()["list"]
         yield from replays[:replay_count]
 
         remaining = replay_count - len(replays)
         while remaining > 0 and "next" in r.json():
-            r = self.session.get(
-                r.json()["next"], params={"count": min(remaining, 200)}
+            r = self._request(
+                "GET", r.json()["next"], params={"count": min(remaining, 200)}
             )
-            if not r.status_code == 200:
-                raise Exception(r.text)
 
             replays = r.json()["list"]
             yield from replays[:remaining]
