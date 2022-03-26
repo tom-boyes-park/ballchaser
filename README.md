@@ -10,7 +10,7 @@ All API requests are exposed via the `BallChaser` class which is initialised wit
 
 ```python
 import os
-from ballchaser import BallChaser
+from ballchaser.client import BallChaser
 
 ball_chaser = BallChaser(os.getenv("BALLCHASING_API_TOKEN"))
 
