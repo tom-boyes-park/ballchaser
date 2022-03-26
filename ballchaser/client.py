@@ -132,6 +132,23 @@ class BallChaser:
                 "At least one of 'player_name' or 'player_id' must be supplied"
             )
 
+        created_before = (
+            created_before if created_before is None else created_before.isoformat()
+        )
+        created_after = (
+            created_after if created_after is None else created_after.isoformat()
+        )
+        replay_date_before = (
+            replay_date_before
+            if replay_date_before is None
+            else replay_date_before.isoformat()
+        )
+        replay_date_after = (
+            replay_date_after
+            if replay_date_after is None
+            else replay_date_after.isoformat()
+        )
+
         params = {
             "title": title,
             "player-name": player_name,
@@ -145,10 +162,10 @@ class BallChaser:
             "uploader": uploader,
             "group": group,
             "map": map_code,
-            "created-before": created_before.isoformat(),
-            "created-after": created_after.isoformat(),
-            "replay-date-before": replay_date_before.isoformat(),
-            "replay-date-after": replay_date_after.isoformat(),
+            "created-before": created_before,
+            "created-after": created_after,
+            "replay-date-before": replay_date_before,
+            "replay-date-after": replay_date_after,
             "count": count,
             "sort-by": sort_by,
             "sort-dir": sort_dir,
