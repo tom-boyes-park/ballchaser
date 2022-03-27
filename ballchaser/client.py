@@ -46,7 +46,7 @@ class BallChaser:
         Can be used to check if your API key is correct and if ballchasing API is
         reachable.
         """
-        return self._request('GET', self._bc_url).json()
+        return self._request("GET", self._bc_url).json()
 
     def get_maps(self) -> Dict:
         """
