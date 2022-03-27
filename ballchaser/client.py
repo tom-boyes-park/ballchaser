@@ -215,7 +215,7 @@ class BallChaser:
         with open(path, "rb") as file:
             response = self._request(
                 "POST",
-                "https://ballchasing.com/api/v2/upload",
+                f"{self._bc_url}/v2/upload",
                 params={"visibility": visibility, "group": group},
                 files={"file": file},
             )
