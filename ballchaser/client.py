@@ -22,7 +22,7 @@ class BallChaser:
         self.patronage = r.json()["type"]
 
     def _request(
-        self, method: str, url: str, params: Optional[Dict[str, Any]] = None
+        self, method: str, url: str, params: Optional[Dict[str, Any]] = None, **kwargs
     ) -> Response:
         """
         Helper method for API requests.
@@ -35,8 +35,8 @@ class BallChaser:
         Returns:
             Response
         """
-        response = self.session.request(url=url, method=method, params=params)
-        if not response.status_code == 200:
+        response = self.session.request(url=url, method=method, params=params, **kwargs)
+        if not (200 <= response.status_code < 300):
             raise Exception(response.text)
 
         return response
@@ -195,6 +195,25 @@ class BallChaser:
             replays = r.json()["list"]
             yield from replays[:remaining]
             remaining = replay_count - len(replays)
+
+    def upload(self, path: str, visibility: str = "public", group: str = None) -> Dict:
+        """
+        Upload replay file at `path` to ballchasing.com.
+
+        Args:
+            path: path to replay file
+            visibility: public, unlisted or private
+            group: id of the group to assign to the uploaded replay
+        """
+        with open(path, "rb") as file:
+            response = self._request(
+                "POST",
+                "https://ballchasing.com/api/v2/upload",
+                params={"visibility": visibility, "group": group},
+                files={"file": file},
+            )
+
+        return response.json()
 
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"

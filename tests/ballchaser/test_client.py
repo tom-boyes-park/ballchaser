@@ -1,4 +1,5 @@
 from contextlib import nullcontext as does_not_raise
+from tempfile import NamedTemporaryFile
 from typing import ContextManager, Dict
 
 import pytest
@@ -39,6 +40,19 @@ def test_ball_chaser_init(
     argnames=["url", "mock_status_code", "mock_json", "exception"],
     argvalues=(
         ("http://abc.com", 200, {"map_1": "Map 1", "map_2": "Map 2"}, does_not_raise()),
+        ("http://abc.com", 201, {"id": "abc"}, does_not_raise()),
+        (
+            "http://abc.com",
+            300,
+            {"error": "error"},
+            pytest.raises(Exception, match='{"error": "error"}'),
+        ),
+        (
+            "http://abc.com",
+            400,
+            {"error": "bad request"},
+            pytest.raises(Exception, match='{"error": "bad request"}'),
+        ),
         (
             "http://def.com",
             500,
@@ -279,3 +293,48 @@ def test_ball_chaser_get_replays(
             )
         ]
         assert actual == expected
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (
+            201,
+            {
+                "id": "abc-123",
+                "location": "https://ballchasing.com/replay/abc-123",
+            },
+            does_not_raise(),
+        ),
+        (
+            409,
+            {
+                "chat": {"Roundhouse": "My Fault.", "YOU": "Savage!"},
+                "error": "duplicate replay",
+                "id": "abc-123",
+                "location": "https://ballchasing.com/replay/abc-123",
+            },
+            pytest.raises(Exception, match="duplicate replay"),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+    ),
+)
+def test_ball_chaser_upload(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.post(
+            "https://ballchasing.com/api/v2/upload",
+            status_code=mock_status_code,
+            json=mock_json,
+        )
+        with NamedTemporaryFile() as file:
+            actual = ball_chaser.upload(file.name, "public", "group-123")
+            assert actual == mock_json
