@@ -398,3 +398,35 @@ def test_ball_chaser_delete(
         )
         actual = ball_chaser.delete_replay(replay_id)
         assert isinstance(actual, Response)
+
+
+@pytest.mark.parametrize(
+    argnames=["replay_id", "mock_status_code", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            204,
+            does_not_raise(),
+        ),
+        (
+            "What a save!",
+            500,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_patch(
+    replay_id: str,
+    mock_status_code: int,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.patch(
+            f"https://ballchasing.com/api/replays/{replay_id}",
+            status_code=mock_status_code,
+        )
+        actual = ball_chaser.patch_replay(
+            replay_id, title="New Title", visibility="private", group="group-1"
+        )
+        assert isinstance(actual, Response)

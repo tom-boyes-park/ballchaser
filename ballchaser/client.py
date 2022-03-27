@@ -233,5 +233,18 @@ class BallChaser:
         """
         return self._request("DELETE", f"{self._bc_url}/replays/{replay_id}")
 
+    def patch_replay(self, replay_id: str, **kwargs) -> Response:
+        """
+        Patch one or more fields of a given replay. Fields to patch are accepted as
+        kwargs.
+
+        Args:
+            replay_id: id of replay to patch
+            **kwargs: fields to patch with new values
+        """
+        return self._request(
+            "PATCH", f"{self._bc_url}/replays/{replay_id}", data=kwargs
+        )
+
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"
