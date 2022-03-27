@@ -25,7 +25,7 @@ from ballchaser.client import BallChaser
         ),
     ),
 )
-def test_ball_chaser_init(
+def test_ball_chaser___init__(
     mock_status_code: int, mock_json: dict, exception: ContextManager
 ):
     with RequestsMocker() as rm, exception:
@@ -77,6 +77,36 @@ def test_ball_chaser__request(
         actual = ball_chaser._request("GET", url, {"a": 1})
         assert isinstance(actual, Response)
         assert actual.json() == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (200, {"chaser": True, "type": "regular"}, does_not_raise()),
+        (
+            401,
+            {"error": "Invalid API key."},
+            pytest.raises(Exception, match="Invalid API key."),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match="Internal server error."),
+        ),
+    ),
+)
+def test_ball_chaser_ping(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get(
+            "https://ballchasing.com/api", status_code=mock_status_code, json=mock_json
+        )
+        actual = ball_chaser.ping()
+        assert actual == mock_json
 
 
 @pytest.mark.parametrize(
