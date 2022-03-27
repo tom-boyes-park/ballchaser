@@ -368,3 +368,33 @@ def test_ball_chaser_upload(
         with NamedTemporaryFile() as file:
             actual = ball_chaser.upload(file.name, "public", "group-123")
             assert actual == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["replay_id", "mock_status_code", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            204,
+            does_not_raise(),
+        ),
+        (
+            "What a save!",
+            500,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_delete(
+    replay_id: str,
+    mock_status_code: int,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.delete(
+            f"https://ballchasing.com/api/replays/{replay_id}",
+            status_code=mock_status_code,
+        )
+        actual = ball_chaser.delete_replay(replay_id)
+        assert isinstance(actual, Response)

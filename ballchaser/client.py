@@ -215,12 +215,23 @@ class BallChaser:
         with open(path, "rb") as file:
             response = self._request(
                 "POST",
-                "https://ballchasing.com/api/v2/upload",
+                f"{self._bc_url}/v2/upload",
                 params={"visibility": visibility, "group": group},
                 files={"file": file},
             )
 
         return response.json()
+
+    def delete_replay(self, replay_id: str) -> Response:
+        """
+        Delete a replay uploaded to ballchasing.com.
+
+        Careful with this one, this operation is permanent and irreversible.
+
+        Args:
+            replay_id: id of the replay to delete
+        """
+        return self._request("DELETE", f"{self._bc_url}/replays/{replay_id}")
 
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"
