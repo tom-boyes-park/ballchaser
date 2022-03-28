@@ -77,7 +77,7 @@ class BallChaser:
         return self._request("GET", f"{self._bc_url}/replays/{replay_id}").json()
 
     # TODO: use Enums for args where appropriate
-    def get_replays(
+    def list_replays(
         self,
         player_name: Optional[Union[str, list]] = None,
         player_id: Optional[Union[str, list]] = None,
@@ -99,9 +99,9 @@ class BallChaser:
         count: Optional[int] = None,
         sort_by: Optional[int] = None,
         sort_dir: Optional[int] = None,
-    ) -> Iterator:
+    ) -> Iterator[Dict]:
         """
-        Filter and retrieve replays. At least one of player_name or player_id must be
+        Filter and list replays. At least one of player_name or player_id must be
         supplied.
 
         This endpoint is rate limited to:
@@ -301,6 +301,72 @@ class BallChaser:
                 "parent": parent,
             },
         ).json()
+
+    def list_groups(
+        self,
+        name: Optional[str] = None,
+        creator: Optional[str] = None,
+        group: Optional[str] = None,
+        created_before: Optional[datetime] = None,
+        created_after: Optional[datetime] = None,
+        group_count: Optional[int] = 50,
+        sort_by: Optional[str] = "created",
+        sort_dir: Optional[str] = "desc",
+    ) -> Iterator[Dict]:
+        """
+        Filter and list replay groups.
+
+        This endpoint is rate limited to:
+
+        - GC patrons: 16 calls/second
+        - Champion patrons: 8 calls/second
+        - Diamond patrons: 4 calls/second, 2000/hour
+        - Gold patrons: 2 calls/second, 1000/hour
+        - All others: 2 calls/second, 500/hour
+
+        Args:
+            name: filter groups by name
+            creator: only include groups created by the specified user, accepts either
+                the numerical 76*************44 steam id, or the special value `me`
+            group: only include children of the specified group id
+            created_before: only include groups created (uploaded) before some date
+            created_after: only include groups created (uploaded) after some date
+            group_count: number of groups (max) to return
+            sort_by: `created` or `name`
+            sort_dir: `desc` or `asc`
+
+        Returns:
+            iterator of dicts
+        """
+        created_before = (
+            created_before if created_before is None else created_before.isoformat()
+        )
+        created_after = (
+            created_after if created_after is None else created_after.isoformat()
+        )
+        params = {
+            "name": name,
+            "creator": creator,
+            "group": group,
+            "created-before": created_before,
+            "created-after": created_after,
+            "sort-by": sort_by,
+            "sort-dir": sort_dir,
+        }
+        r = self._request("GET", f"{self._bc_url}/groups", params=params)
+
+        groups = r.json()["list"]
+        yield from groups[:group_count]
+
+        remaining = group_count - len(groups)
+        while remaining > 0 and "next" in r.json():
+            r = self._request(
+                "GET", r.json()["next"], params={"count": min(remaining, 200)}
+            )
+
+            groups = r.json()["list"]
+            yield from groups[:remaining]
+            remaining = group_count - len(groups)
 
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"

@@ -178,11 +178,11 @@ def test_ball_chaser_get_replay(
         assert actual == mock_json
 
 
-def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
+def test_ball_chaser_list_replays_no_player_name_or_id(ball_chaser: BallChaser):
     with pytest.raises(
         Exception, match="At least one of 'player_name' or 'player_id' must be supplied"
     ):
-        next(ball_chaser.get_replays())
+        next(ball_chaser.list_replays())
 
 
 @pytest.mark.parametrize(
@@ -309,7 +309,7 @@ def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
         ),
     ),
 )
-def test_ball_chaser_get_replays(
+def test_ball_chaser_list_replays(
     replay_count: int,
     mock_responses: list,
     expected: dict,
@@ -320,7 +320,7 @@ def test_ball_chaser_get_replays(
         rm.get("https://ballchasing.com/api/replays", response_list=mock_responses)
         actual = [
             replay
-            for replay in ball_chaser.get_replays(
+            for replay in ball_chaser.list_replays(
                 player_name="GarrettG", replay_count=replay_count
             )
         ]
@@ -530,3 +530,143 @@ def test_ball_chaser_client(
             parent="group-parent",
         )
         assert actual == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["group_count", "mock_responses", "expected", "exception"],
+    argvalues=(
+        (
+            1,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/groups",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+            ],
+            does_not_raise(),
+        ),
+        (
+            4,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/groups",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+                {"id": "def-456"},
+                {"id": "ghi-789"},
+                {"id": "jkl-101"},
+            ],
+            does_not_raise(),
+        ),
+        (
+            100,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/groups",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+                {"id": "def-456"},
+                {"id": "ghi-789"},
+                {"id": "jkl-101"},
+            ],
+            does_not_raise(),
+        ),
+        (
+            10,
+            [
+                {
+                    "status_code": 200,
+                    "json": {"list": []},
+                }
+            ],
+            [],
+            does_not_raise(),
+        ),
+        (
+            10,
+            [
+                {
+                    "status_code": 500,
+                    "json": {"error": "Internal server error."},
+                }
+            ],
+            None,
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+        (
+            4,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/groups",
+                    },
+                },
+                {
+                    "status_code": 500,
+                    "json": {"error": "What a save!"},
+                },
+            ],
+            None,
+            pytest.raises(Exception, match='{"error": "What a save!"}'),
+        ),
+    ),
+)
+def test_ball_chaser_list_groups(
+    group_count: int,
+    mock_responses: list,
+    expected: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get("https://ballchasing.com/api/groups", response_list=mock_responses)
+        actual = [
+            replay
+            for replay in ball_chaser.list_groups(name="RLCS", group_count=group_count)
+        ]
+        assert actual == expected
