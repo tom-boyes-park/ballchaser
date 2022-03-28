@@ -77,7 +77,7 @@ class BallChaser:
         return self._request("GET", f"{self._bc_url}/replays/{replay_id}").json()
 
     # TODO: use Enums for args where appropriate
-    def get_replays(
+    def list_replays(
         self,
         player_name: Optional[Union[str, list]] = None,
         player_id: Optional[Union[str, list]] = None,
@@ -99,9 +99,9 @@ class BallChaser:
         count: Optional[int] = None,
         sort_by: Optional[int] = None,
         sort_dir: Optional[int] = None,
-    ) -> Iterator:
+    ) -> Iterator[Dict]:
         """
-        Filter and retrieve replays. At least one of player_name or player_id must be
+        Filter and list replays. At least one of player_name or player_id must be
         supplied.
 
         This endpoint is rate limited to:
@@ -245,7 +245,7 @@ class BallChaser:
             **kwargs: fields to patch with new values
         """
         return self._request(
-            "PATCH", f"{self._bc_url}/replays/{replay_id}", data=kwargs
+            "PATCH", f"{self._bc_url}/replays/{replay_id}", json=kwargs
         )
 
     def download_replay(
@@ -266,6 +266,138 @@ class BallChaser:
         d.mkdir(parents=True, exist_ok=True)
         with open(Path(d, f"{replay_id}.replay"), "wb") as file:
             file.write(response.content)
+
+    def create_group(
+        self,
+        name: str,
+        player_identification: str,
+        team_identification: str,
+        parent: Optional[str] = None,
+    ) -> Dict:
+        """
+        Create a new replay group.
+
+        Args:
+            name: name of the group
+            player_identification: How to identify the same player across multiple
+                replays. Some tournaments (e.g. RLCS) make players use a pool of
+                generic Steam accounts, meaning the same player could end up using 2
+                different accounts in 2 series. That's when the `by-name` comes in
+                handy. Otherwise, use `by-id`.
+            team_identification: How to identify the same team across multiple replays.
+                Set to `by-distinct-players` if teams have a fixed roster of players
+                for every single game. In some tournaments/leagues, teams allow player
+                rotations, or a sub can replace another player, in which case use
+                `by-player-clusters`.
+            parent: id of the group to use as parent group for new group
+        """
+        return self._request(
+            "POST",
+            f"{self._bc_url}/groups",
+            json={
+                "name": name,
+                "player_identification": player_identification,
+                "team_identification": team_identification,
+                "parent": parent,
+            },
+        ).json()
+
+    def list_groups(
+        self,
+        name: Optional[str] = None,
+        creator: Optional[str] = None,
+        group: Optional[str] = None,
+        created_before: Optional[datetime] = None,
+        created_after: Optional[datetime] = None,
+        group_count: Optional[int] = 50,
+        sort_by: Optional[str] = "created",
+        sort_dir: Optional[str] = "desc",
+    ) -> Iterator[Dict]:
+        """
+        Filter and list replay groups.
+
+        This endpoint is rate limited to:
+
+        - GC patrons: 16 calls/second
+        - Champion patrons: 8 calls/second
+        - Diamond patrons: 4 calls/second, 2000/hour
+        - Gold patrons: 2 calls/second, 1000/hour
+        - All others: 2 calls/second, 500/hour
+
+        Args:
+            name: filter groups by name
+            creator: only include groups created by the specified user, accepts either
+                the numerical 76*************44 steam id, or the special value `me`
+            group: only include children of the specified group id
+            created_before: only include groups created (uploaded) before some date
+            created_after: only include groups created (uploaded) after some date
+            group_count: number of groups (max) to return
+            sort_by: `created` or `name`
+            sort_dir: `desc` or `asc`
+
+        Returns:
+            iterator of dicts
+        """
+        created_before = (
+            created_before if created_before is None else created_before.isoformat()
+        )
+        created_after = (
+            created_after if created_after is None else created_after.isoformat()
+        )
+        params = {
+            "name": name,
+            "creator": creator,
+            "group": group,
+            "created-before": created_before,
+            "created-after": created_after,
+            "sort-by": sort_by,
+            "sort-dir": sort_dir,
+        }
+        r = self._request("GET", f"{self._bc_url}/groups", params=params)
+
+        groups = r.json()["list"]
+        yield from groups[:group_count]
+
+        remaining = group_count - len(groups)
+        while remaining > 0 and "next" in r.json():
+            r = self._request(
+                "GET", r.json()["next"], params={"count": min(remaining, 200)}
+            )
+
+            groups = r.json()["list"]
+            yield from groups[:remaining]
+            remaining = group_count - len(groups)
+
+    def get_group(self, group_id: str) -> Dict:
+        """
+        Retrieve group metadata.
+
+        Args:
+            group_id: id of group
+        """
+        return self._request("GET", f"{self._bc_url}/groups/{group_id}").json()
+
+    def delete_group(self, group_id: str) -> Response:
+        """
+        Delete a group on ballchasing.com.
+
+        Careful with this one, this operation is permanent and irreversible.
+
+        Args:
+            group_id: id of the group to delete
+        """
+        return self._request("DELETE", f"{self._bc_url}/groups/{group_id}")
+
+    def patch_group(self, group_id: str, **kwargs) -> Response:
+        """
+        Patch one or more fields of a given group. Fields to patch are accepted as
+        kwargs.
+
+        Args:
+            group_id: id of group to patch
+            **kwargs: fields to patch with new values
+        """
+        return self._request("PATCH", f"{self._bc_url}/groups/{group_id}", json=kwargs)
 
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"

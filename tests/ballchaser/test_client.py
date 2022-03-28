@@ -178,11 +178,11 @@ def test_ball_chaser_get_replay(
         assert actual == mock_json
 
 
-def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
+def test_ball_chaser_list_replays_no_player_name_or_id(ball_chaser: BallChaser):
     with pytest.raises(
         Exception, match="At least one of 'player_name' or 'player_id' must be supplied"
     ):
-        next(ball_chaser.get_replays())
+        next(ball_chaser.list_replays())
 
 
 @pytest.mark.parametrize(
@@ -309,7 +309,7 @@ def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
         ),
     ),
 )
-def test_ball_chaser_get_replays(
+def test_ball_chaser_list_replays(
     replay_count: int,
     mock_responses: list,
     expected: dict,
@@ -320,7 +320,7 @@ def test_ball_chaser_get_replays(
         rm.get("https://ballchasing.com/api/replays", response_list=mock_responses)
         actual = [
             replay
-            for replay in ball_chaser.get_replays(
+            for replay in ball_chaser.list_replays(
                 player_name="GarrettG", replay_count=replay_count
             )
         ]
@@ -387,7 +387,7 @@ def test_ball_chaser_upload(
         ),
     ),
 )
-def test_ball_chaser_delete(
+def test_ball_chaser_delete_replay(
     replay_id: str,
     mock_status_code: int,
     exception: ContextManager,
@@ -417,7 +417,7 @@ def test_ball_chaser_delete(
         ),
     ),
 )
-def test_ball_chaser_patch(
+def test_ball_chaser_patch_replay(
     replay_id: str,
     mock_status_code: int,
     exception: ContextManager,
@@ -486,3 +486,288 @@ def test_ball_chaser_download(
         assert not os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
         ball_chaser.download_replay(replay_id, directory="./12345")
         assert os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (
+            201,
+            {
+                "id": "my-new-group-abc-123",
+                "link": "https://ballchasing.com/api/groups/my-new-group-abc-123",
+            },
+            does_not_raise(),
+        ),
+        (
+            409,
+            {"error": "duplicate group"},
+            pytest.raises(Exception, match="duplicate group"),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+    ),
+)
+def test_ball_chaser_create_group(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.post(
+            "https://ballchasing.com/api/groups",
+            status_code=mock_status_code,
+            json=mock_json,
+        )
+        actual = ball_chaser.create_group(
+            name="my-new-group",
+            player_identification="by-id",
+            team_identification="by-player-clusters",
+            parent="group-parent",
+        )
+        assert actual == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["group_count", "mock_responses", "expected", "exception"],
+    argvalues=(
+        (
+            1,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/groups",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+            ],
+            does_not_raise(),
+        ),
+        (
+            4,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/groups",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+                {"id": "def-456"},
+                {"id": "ghi-789"},
+                {"id": "jkl-101"},
+            ],
+            does_not_raise(),
+        ),
+        (
+            100,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/groups",
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "ghi-789"}, {"id": "jkl-101"}],
+                    },
+                },
+            ],
+            [
+                {"id": "abc-123"},
+                {"id": "def-456"},
+                {"id": "ghi-789"},
+                {"id": "jkl-101"},
+            ],
+            does_not_raise(),
+        ),
+        (
+            10,
+            [
+                {
+                    "status_code": 200,
+                    "json": {"list": []},
+                }
+            ],
+            [],
+            does_not_raise(),
+        ),
+        (
+            10,
+            [
+                {
+                    "status_code": 500,
+                    "json": {"error": "Internal server error."},
+                }
+            ],
+            None,
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+        (
+            4,
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "count": 4,
+                        "list": [{"id": "abc-123"}, {"id": "def-456"}],
+                        "next": "https://ballchasing.com/api/groups",
+                    },
+                },
+                {
+                    "status_code": 500,
+                    "json": {"error": "What a save!"},
+                },
+            ],
+            None,
+            pytest.raises(Exception, match='{"error": "What a save!"}'),
+        ),
+    ),
+)
+def test_ball_chaser_list_groups(
+    group_count: int,
+    mock_responses: list,
+    expected: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get("https://ballchasing.com/api/groups", response_list=mock_responses)
+        actual = [
+            replay
+            for replay in ball_chaser.list_groups(name="RLCS", group_count=group_count)
+        ]
+        assert actual == expected
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (
+            200,
+            {"id": "my-group-abc-123"},
+            does_not_raise(),
+        ),
+        (
+            404,
+            {"error": "not found"},
+            pytest.raises(Exception, match="not found"),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+    ),
+)
+def test_ball_chaser_get_group(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get(
+            "https://ballchasing.com/api/groups/my-group",
+            status_code=mock_status_code,
+            json=mock_json,
+        )
+        actual = ball_chaser.get_group("my-group")
+        assert actual == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["group_id", "mock_status_code", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            204,
+            does_not_raise(),
+        ),
+        (
+            "What a save!",
+            500,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_delete_group(
+    group_id: str,
+    mock_status_code: int,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.delete(
+            f"https://ballchasing.com/api/groups/{group_id}",
+            status_code=mock_status_code,
+        )
+        actual = ball_chaser.delete_group(group_id)
+        assert isinstance(actual, Response)
+
+
+@pytest.mark.parametrize(
+    argnames=["group_id", "mock_status_code", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            204,
+            does_not_raise(),
+        ),
+        (
+            "What a save!",
+            500,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_patch_group(
+    group_id: str,
+    mock_status_code: int,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.patch(
+            f"https://ballchasing.com/api/groups/{group_id}",
+            status_code=mock_status_code,
+        )
+        actual = ball_chaser.patch_group(
+            group_id,
+            team_identification="by-player-clusters",
+            shared=True,
+            parent="new-parent-group",
+        )
+        assert isinstance(actual, Response)
