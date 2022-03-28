@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ballchaser"
-version = "0.6.0"
+version = "0.6.1"
 description = "Unofficial Python API client for the ballchasing.com API."
 authors = ["Tom Boyes-Park"]
 license = "MIT"
@@ -8,7 +8,7 @@ readme = "README.md"
 repository = "https://github.com/tom-boyes-park/ballchaser"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.7,<4.0"
 requests = "^2.27.1"
 
 [tool.poetry.dev-dependencies]
