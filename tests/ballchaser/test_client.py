@@ -1,4 +1,7 @@
+import os.path
 from contextlib import nullcontext as does_not_raise
+from pathlib import Path
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import ContextManager, Dict
 
 import pytest
@@ -24,7 +27,7 @@ from ballchaser.client import BallChaser
         ),
     ),
 )
-def test_ball_chaser_init(
+def test_ball_chaser___init__(
     mock_status_code: int, mock_json: dict, exception: ContextManager
 ):
     with RequestsMocker() as rm, exception:
@@ -39,6 +42,19 @@ def test_ball_chaser_init(
     argnames=["url", "mock_status_code", "mock_json", "exception"],
     argvalues=(
         ("http://abc.com", 200, {"map_1": "Map 1", "map_2": "Map 2"}, does_not_raise()),
+        ("http://abc.com", 201, {"id": "abc"}, does_not_raise()),
+        (
+            "http://abc.com",
+            300,
+            {"error": "error"},
+            pytest.raises(Exception, match='{"error": "error"}'),
+        ),
+        (
+            "http://abc.com",
+            400,
+            {"error": "bad request"},
+            pytest.raises(Exception, match='{"error": "bad request"}'),
+        ),
         (
             "http://def.com",
             500,
@@ -63,6 +79,36 @@ def test_ball_chaser__request(
         actual = ball_chaser._request("GET", url, {"a": 1})
         assert isinstance(actual, Response)
         assert actual.json() == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (200, {"chaser": True, "type": "regular"}, does_not_raise()),
+        (
+            401,
+            {"error": "Invalid API key."},
+            pytest.raises(Exception, match="Invalid API key."),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match="Internal server error."),
+        ),
+    ),
+)
+def test_ball_chaser_ping(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get(
+            "https://ballchasing.com/api", status_code=mock_status_code, json=mock_json
+        )
+        actual = ball_chaser.ping()
+        assert actual == mock_json
 
 
 @pytest.mark.parametrize(
@@ -279,3 +325,164 @@ def test_ball_chaser_get_replays(
             )
         ]
         assert actual == expected
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (
+            201,
+            {
+                "id": "abc-123",
+                "location": "https://ballchasing.com/replay/abc-123",
+            },
+            does_not_raise(),
+        ),
+        (
+            409,
+            {
+                "chat": {"Roundhouse": "My Fault.", "YOU": "Savage!"},
+                "error": "duplicate replay",
+                "id": "abc-123",
+                "location": "https://ballchasing.com/replay/abc-123",
+            },
+            pytest.raises(Exception, match="duplicate replay"),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+    ),
+)
+def test_ball_chaser_upload(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.post(
+            "https://ballchasing.com/api/v2/upload",
+            status_code=mock_status_code,
+            json=mock_json,
+        )
+        with NamedTemporaryFile() as file:
+            actual = ball_chaser.upload(file.name, "public", "group-123")
+            assert actual == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["replay_id", "mock_status_code", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            204,
+            does_not_raise(),
+        ),
+        (
+            "What a save!",
+            500,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_delete(
+    replay_id: str,
+    mock_status_code: int,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.delete(
+            f"https://ballchasing.com/api/replays/{replay_id}",
+            status_code=mock_status_code,
+        )
+        actual = ball_chaser.delete_replay(replay_id)
+        assert isinstance(actual, Response)
+
+
+@pytest.mark.parametrize(
+    argnames=["replay_id", "mock_status_code", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            204,
+            does_not_raise(),
+        ),
+        (
+            "What a save!",
+            500,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_patch(
+    replay_id: str,
+    mock_status_code: int,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.patch(
+            f"https://ballchasing.com/api/replays/{replay_id}",
+            status_code=mock_status_code,
+        )
+        actual = ball_chaser.patch_replay(
+            replay_id, title="New Title", visibility="private", group="group-1"
+        )
+        assert isinstance(actual, Response)
+
+
+@pytest.mark.parametrize(
+    argnames=["replay_id", "mock_status_code", "mock_content", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            200,
+            b"some_bytes",
+            does_not_raise(),
+        ),
+        (
+            "abc-does-not-exist",
+            404,
+            None,
+            pytest.raises(Exception),
+        ),
+        (
+            "def",
+            500,
+            None,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_download(
+    replay_id: str,
+    mock_status_code: int,
+    mock_content: bytes,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get(
+            url=f"https://ballchasing.com/api/replays/{replay_id}/file",
+            status_code=mock_status_code,
+            content=mock_content,
+        )
+
+        # directory not supplied, saves to current working directory
+        assert not os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
+        ball_chaser.download_replay(replay_id)
+        assert os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
+
+        # save to existing directory
+        with TemporaryDirectory() as td:
+            assert not os.path.isfile(Path(td, f"{replay_id}.replay"))
+            ball_chaser.download_replay(replay_id, directory=td)
+            assert os.path.isfile(Path(td, f"{replay_id}.replay"))
+
+        # save to directory that doesn't exist (i.e. test directory creation)
+        assert not os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
+        ball_chaser.download_replay(replay_id, directory="./12345")
+        assert os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))

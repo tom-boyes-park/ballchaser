@@ -1,4 +1,6 @@
+import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Iterator, Optional, Union
 
 from requests import Response, Session
@@ -18,11 +20,11 @@ class BallChaser:
         Determine and set patron level so that we know what rate limits to apply
         when hitting endpoints.
         """
-        r = self._request("GET", self._bc_url)
-        self.patronage = r.json()["type"]
+        response = self.ping()
+        self.patronage = response["type"]
 
     def _request(
-        self, method: str, url: str, params: Optional[Dict[str, Any]] = None
+        self, method: str, url: str, params: Optional[Dict[str, Any]] = None, **kwargs
     ) -> Response:
         """
         Helper method for API requests.
@@ -35,11 +37,18 @@ class BallChaser:
         Returns:
             Response
         """
-        response = self.session.request(url=url, method=method, params=params)
-        if not response.status_code == 200:
+        response = self.session.request(url=url, method=method, params=params, **kwargs)
+        if not (200 <= response.status_code < 300):
             raise Exception(response.text)
 
         return response
+
+    def ping(self) -> Dict:
+        """
+        Can be used to check if your API key is correct and if ballchasing API is
+        reachable.
+        """
+        return self._request("GET", self._bc_url).json()
 
     def get_maps(self) -> Dict:
         """
@@ -195,6 +204,68 @@ class BallChaser:
             replays = r.json()["list"]
             yield from replays[:remaining]
             remaining = replay_count - len(replays)
+
+    def upload(self, path: str, visibility: str = "public", group: str = None) -> Dict:
+        """
+        Upload replay file at `path` to ballchasing.com.
+
+        Args:
+            path: path to replay file
+            visibility: public, unlisted or private
+            group: id of the group to assign to the uploaded replay
+        """
+        with open(path, "rb") as file:
+            response = self._request(
+                "POST",
+                f"{self._bc_url}/v2/upload",
+                params={"visibility": visibility, "group": group},
+                files={"file": file},
+            )
+
+        return response.json()
+
+    def delete_replay(self, replay_id: str) -> Response:
+        """
+        Delete a replay uploaded to ballchasing.com.
+
+        Careful with this one, this operation is permanent and irreversible.
+
+        Args:
+            replay_id: id of the replay to delete
+        """
+        return self._request("DELETE", f"{self._bc_url}/replays/{replay_id}")
+
+    def patch_replay(self, replay_id: str, **kwargs) -> Response:
+        """
+        Patch one or more fields of a given replay. Fields to patch are accepted as
+        kwargs.
+
+        Args:
+            replay_id: id of replay to patch
+            **kwargs: fields to patch with new values
+        """
+        return self._request(
+            "PATCH", f"{self._bc_url}/replays/{replay_id}", data=kwargs
+        )
+
+    def download_replay(
+        self, replay_id: str, directory: Optional[str] = os.getcwd()
+    ) -> None:
+        """
+        Download a replay from ballchasing.com, writing it to a .replay file.
+
+        Optionally provide the path to the directory into which to save the replay.
+        Defaults to current working directory if not specified.
+
+        Args:
+            replay_id: id of the replay to download
+            directory: directory into which the replay will be saved
+        """
+        response = self._request("GET", f"{self._bc_url}/replays/{replay_id}/file")
+        d = Path(directory)
+        d.mkdir(parents=True, exist_ok=True)
+        with open(Path(d, f"{replay_id}.replay"), "wb") as file:
+            file.write(response.content)
 
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"
