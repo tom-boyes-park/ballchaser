@@ -1,4 +1,6 @@
+import os.path
 from contextlib import nullcontext as does_not_raise
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import ContextManager, Dict
 
@@ -430,3 +432,56 @@ def test_ball_chaser_patch(
             replay_id, title="New Title", visibility="private", group="group-1"
         )
         assert isinstance(actual, Response)
+
+
+@pytest.mark.parametrize(
+    argnames=["replay_id", "mock_status_code", "mock_content", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            200,
+            b"some_bytes",
+            does_not_raise(),
+        ),
+        (
+            "abc-does-not-exist",
+            404,
+            None,
+            pytest.raises(Exception),
+        ),
+        (
+            "def",
+            500,
+            None,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_download(
+    replay_id: str,
+    mock_status_code: int,
+    mock_content: bytes,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get(
+            url=f"https://ballchasing.com/api/replays/{replay_id}/file",
+            status_code=mock_status_code,
+            content=mock_content,
+        )
+
+        # directory not supplied, saves to current working directory
+        assert not os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
+        ball_chaser.download_replay(replay_id)
+        assert os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
+
+        # save to existing directory
+        assert not os.path.isfile(Path(os.getcwd(), "../", f"{replay_id}.replay"))
+        ball_chaser.download_replay(replay_id, directory="../")
+        assert os.path.isfile(Path(os.getcwd(), "../", f"{replay_id}.replay"))
+
+        # save to directory that doesn't exist (i.e. test directory creation)
+        assert not os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
+        ball_chaser.download_replay(replay_id, directory="./12345")
+        assert os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
