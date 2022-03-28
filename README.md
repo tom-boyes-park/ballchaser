@@ -6,7 +6,7 @@
 
 Unofficial Python API client for the ballchasing.com API.
 
-# Getting Started
+# Usage
 ```commandline
 pip install ballchaser
 ```
@@ -26,8 +26,12 @@ replays = [
 ]
 
 # retrieve replay statistics
-relay_stats = [
+replay_stats = [
     ball_chaser.get_replay(replay["id"])
     for replay in replays
 ]
 ```
+
+# Contributing & Feedback
+
+If there are any new features you'd like, or you encounter a bug, you can contribute by opening an issue or submitting a pull request.
