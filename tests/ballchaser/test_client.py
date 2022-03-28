@@ -530,7 +530,7 @@ def test_ball_chaser_create_group(
             name="my-new-group",
             player_identification="by-id",
             team_identification="by-player-clusters",
-            parent="group-parent",
+            parent_group_id="group-parent",
         )
         assert actual == mock_json
 

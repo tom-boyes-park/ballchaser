@@ -90,7 +90,7 @@ class BallChaser:
         max_rank: Optional[str] = None,
         pro: Optional[bool] = None,
         uploader: Optional[str] = None,
-        group: Optional[str] = None,
+        group_id: Optional[str] = None,
         map_code: Optional[str] = None,
         created_before: Optional[datetime] = None,
         created_after: Optional[datetime] = None,
@@ -131,7 +131,7 @@ class BallChaser:
             pro: only include replays containing at least one pro player
             uploader: only include replays uploaded by the specified user, accepts
                 either the numerical 76*************44 steam id, or the special value me
-            group: only include replays belonging to the specified group, this only
+            group_id: only include replays belonging to the specified group, this only
                 includes replays immediately under the specified group, but not replays
                 in child groups
             map_code: only include replays in the specified map, use `get_maps` to
@@ -180,7 +180,7 @@ class BallChaser:
             "max-rank": max_rank,
             "pro": pro,
             "uploader": uploader,
-            "group": group,
+            "group": group_id,
             "map": map_code,
             "created-before": created_before,
             "created-after": created_after,
@@ -206,7 +206,7 @@ class BallChaser:
             remaining = replay_count - len(replays)
 
     def upload_replay(
-        self, path: str, visibility: str = "public", group: str = None
+        self, path: str, visibility: str = "public", group_id: str = None
     ) -> Dict:
         """
         Upload replay file at `path` to ballchasing.com.
@@ -214,13 +214,13 @@ class BallChaser:
         Args:
             path: path to replay file
             visibility: public, unlisted or private
-            group: id of the group to assign to the uploaded replay
+            group_id: id of the group to assign to the uploaded replay
         """
         with open(path, "rb") as file:
             response = self._request(
                 "POST",
                 f"{self._bc_url}/v2/upload",
-                params={"visibility": visibility, "group": group},
+                params={"visibility": visibility, "group": group_id},
                 files={"file": file},
             )
 
@@ -274,7 +274,7 @@ class BallChaser:
         name: str,
         player_identification: str,
         team_identification: str,
-        parent: Optional[str] = None,
+        parent_group_id: Optional[str] = None,
     ) -> Dict:
         """
         Create a new replay group.
@@ -291,7 +291,7 @@ class BallChaser:
                 for every single game. In some tournaments/leagues, teams allow player
                 rotations, or a sub can replace another player, in which case use
                 `by-player-clusters`.
-            parent: id of the group to use as parent group for new group
+            parent_group_id: id of the group to use as parent group for new group
         """
         return self._request(
             "POST",
@@ -300,7 +300,7 @@ class BallChaser:
                 "name": name,
                 "player_identification": player_identification,
                 "team_identification": team_identification,
-                "parent": parent,
+                "parent": parent_group_id,
             },
         ).json()
 
@@ -308,7 +308,7 @@ class BallChaser:
         self,
         name: Optional[str] = None,
         creator: Optional[str] = None,
-        group: Optional[str] = None,
+        group_id: Optional[str] = None,
         created_before: Optional[datetime] = None,
         created_after: Optional[datetime] = None,
         group_count: Optional[int] = 50,
@@ -330,7 +330,7 @@ class BallChaser:
             name: filter groups by name
             creator: only include groups created by the specified user, accepts either
                 the numerical 76*************44 steam id, or the special value `me`
-            group: only include children of the specified group id
+            group_id: only include children of the specified group id
             created_before: only include groups created (uploaded) before some date
             created_after: only include groups created (uploaded) after some date
             group_count: number of groups (max) to return
@@ -349,7 +349,7 @@ class BallChaser:
         params = {
             "name": name,
             "creator": creator,
-            "group": group,
+            "group": group_id,
             "created-before": created_before,
             "created-after": created_after,
             "sort-by": sort_by,
