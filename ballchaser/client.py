@@ -267,5 +267,40 @@ class BallChaser:
         with open(Path(d, f"{replay_id}.replay"), "wb") as file:
             file.write(response.content)
 
+    def create_group(
+        self,
+        name: str,
+        player_identification: str,
+        team_identification: str,
+        parent: Optional[str] = None,
+    ):
+        """
+        Create a new replay group.
+
+        Args:
+            name: name of the group
+            player_identification: How to identify the same player across multiple
+                replays. Some tournaments (e.g. RLCS) make players use a pool of
+                generic Steam accounts, meaning the same player could end up using 2
+                different accounts in 2 series. That's when the `by-name` comes in
+                handy. Otherwise, use `by-id`.
+            team_identification: How to identify the same team across multiple replays.
+                Set to `by-distinct-players` if teams have a fixed roster of players
+                for every single game. In some tournaments/leagues, teams allow player
+                rotations, or a sub can replace another player, in which case use
+                `by-player-clusters`.
+            parent: id of the group to use as parent group for new group
+        """
+        return self._request(
+            "POST",
+            f"{self._bc_url}/groups",
+            json={
+                "name": name,
+                "player_identification": player_identification,
+                "team_identification": team_identification,
+                "parent": parent,
+            },
+        ).json()
+
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"

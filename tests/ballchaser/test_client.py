@@ -486,3 +486,47 @@ def test_ball_chaser_download(
         assert not os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
         ball_chaser.download_replay(replay_id, directory="./12345")
         assert os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (
+            201,
+            {
+                "id": "my-new-group-abc-123",
+                "link": "https://ballchasing.com/api/groups/my-new-group-abc-123",
+            },
+            does_not_raise(),
+        ),
+        (
+            409,
+            {"error": "duplicate group"},
+            pytest.raises(Exception, match="duplicate group"),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+    ),
+)
+def test_ball_chaser_client(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.post(
+            "https://ballchasing.com/api/groups",
+            status_code=mock_status_code,
+            json=mock_json,
+        )
+        actual = ball_chaser.create_group(
+            name="my-new-group",
+            player_identification="by-id",
+            team_identification="by-player-clusters",
+            parent="group-parent",
+        )
+        assert actual == mock_json
