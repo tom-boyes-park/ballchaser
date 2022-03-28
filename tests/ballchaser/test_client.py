@@ -670,3 +670,39 @@ def test_ball_chaser_list_groups(
             for replay in ball_chaser.list_groups(name="RLCS", group_count=group_count)
         ]
         assert actual == expected
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_status_code", "mock_json", "exception"],
+    argvalues=(
+        (
+            200,
+            {"id": "my-group-abc-123"},
+            does_not_raise(),
+        ),
+        (
+            404,
+            {"error": "not found"},
+            pytest.raises(Exception, match="not found"),
+        ),
+        (
+            500,
+            {"error": "Internal server error."},
+            pytest.raises(Exception, match='{"error": "Internal server error."}'),
+        ),
+    ),
+)
+def test_ball_chaser_get_group(
+    mock_status_code: int,
+    mock_json: dict,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.get(
+            "https://ballchasing.com/api/groups/my-group",
+            status_code=mock_status_code,
+            json=mock_json,
+        )
+        actual = ball_chaser.get_group("my-group")
+        assert actual == mock_json
