@@ -1,7 +1,7 @@
 import os.path
 from contextlib import nullcontext as does_not_raise
 from pathlib import Path
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import ContextManager, Dict
 
 import pytest
@@ -477,9 +477,10 @@ def test_ball_chaser_download(
         assert os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
 
         # save to existing directory
-        assert not os.path.isfile(Path(os.getcwd(), "../", f"{replay_id}.replay"))
-        ball_chaser.download_replay(replay_id, directory="../")
-        assert os.path.isfile(Path(os.getcwd(), "../", f"{replay_id}.replay"))
+        with TemporaryDirectory() as td:
+            assert not os.path.isfile(Path(td, f"{replay_id}.replay"))
+            ball_chaser.download_replay(replay_id, directory=td)
+            assert os.path.isfile(Path(td, f"{replay_id}.replay"))
 
         # save to directory that doesn't exist (i.e. test directory creation)
         assert not os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
