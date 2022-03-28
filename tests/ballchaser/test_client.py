@@ -387,7 +387,7 @@ def test_ball_chaser_upload(
         ),
     ),
 )
-def test_ball_chaser_delete(
+def test_ball_chaser_delete_replay(
     replay_id: str,
     mock_status_code: int,
     exception: ContextManager,
@@ -417,7 +417,7 @@ def test_ball_chaser_delete(
         ),
     ),
 )
-def test_ball_chaser_patch(
+def test_ball_chaser_patch_replay(
     replay_id: str,
     mock_status_code: int,
     exception: ContextManager,
