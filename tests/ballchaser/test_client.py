@@ -387,7 +387,7 @@ def test_ball_chaser_upload(
         ),
     ),
 )
-def test_ball_chaser_delete(
+def test_ball_chaser_delete_replay(
     replay_id: str,
     mock_status_code: int,
     exception: ContextManager,
@@ -417,7 +417,7 @@ def test_ball_chaser_delete(
         ),
     ),
 )
-def test_ball_chaser_patch(
+def test_ball_chaser_patch_replay(
     replay_id: str,
     mock_status_code: int,
     exception: ContextManager,
@@ -706,3 +706,68 @@ def test_ball_chaser_get_group(
         )
         actual = ball_chaser.get_group("my-group")
         assert actual == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["group_id", "mock_status_code", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            204,
+            does_not_raise(),
+        ),
+        (
+            "What a save!",
+            500,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_delete_group(
+    group_id: str,
+    mock_status_code: int,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.delete(
+            f"https://ballchasing.com/api/groups/{group_id}",
+            status_code=mock_status_code,
+        )
+        actual = ball_chaser.delete_group(group_id)
+        assert isinstance(actual, Response)
+
+
+@pytest.mark.parametrize(
+    argnames=["group_id", "mock_status_code", "exception"],
+    argvalues=(
+        (
+            "abc-123",
+            204,
+            does_not_raise(),
+        ),
+        (
+            "What a save!",
+            500,
+            pytest.raises(Exception),
+        ),
+    ),
+)
+def test_ball_chaser_patch_group(
+    group_id: str,
+    mock_status_code: int,
+    exception: ContextManager,
+    ball_chaser: BallChaser,
+):
+    with RequestsMocker() as rm, exception:
+        rm.patch(
+            f"https://ballchasing.com/api/groups/{group_id}",
+            status_code=mock_status_code,
+        )
+        actual = ball_chaser.patch_group(
+            group_id,
+            team_identification="by-player-clusters",
+            shared=True,
+            parent="new-parent-group",
+        )
+        assert isinstance(actual, Response)

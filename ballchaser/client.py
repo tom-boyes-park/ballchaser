@@ -245,7 +245,7 @@ class BallChaser:
             **kwargs: fields to patch with new values
         """
         return self._request(
-            "PATCH", f"{self._bc_url}/replays/{replay_id}", data=kwargs
+            "PATCH", f"{self._bc_url}/replays/{replay_id}", json=kwargs
         )
 
     def download_replay(
@@ -376,6 +376,28 @@ class BallChaser:
             group_id: id of group
         """
         return self._request("GET", f"{self._bc_url}/groups/{group_id}").json()
+
+    def delete_group(self, group_id: str) -> Response:
+        """
+        Delete a group on ballchasing.com.
+
+        Careful with this one, this operation is permanent and irreversible.
+
+        Args:
+            group_id: id of the group to delete
+        """
+        return self._request("DELETE", f"{self._bc_url}/groups/{group_id}")
+
+    def patch_group(self, group_id: str, **kwargs) -> Response:
+        """
+        Patch one or more fields of a given group. Fields to patch are accepted as
+        kwargs.
+
+        Args:
+            group_id: id of group to patch
+            **kwargs: fields to patch with new values
+        """
+        return self._request("PATCH", f"{self._bc_url}/groups/{group_id}", json=kwargs)
 
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"
