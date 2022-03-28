@@ -511,7 +511,7 @@ def test_ball_chaser_download(
         ),
     ),
 )
-def test_ball_chaser_client(
+def test_ball_chaser_create_group(
     mock_status_code: int,
     mock_json: dict,
     exception: ContextManager,
