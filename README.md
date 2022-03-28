@@ -17,7 +17,7 @@ ball_chaser = BallChaser(os.getenv("BALLCHASING_API_TOKEN"))
 # search and retrieve replay metadata
 replays = [
     replay
-    for replay in ball_chaser.get_replays(player_name="GarrettG", replay_count=10)
+    for replay in ball_chaser.list_replays(player_name="GarrettG", replay_count=10)
 ]
 
 # retrieve replay statistics

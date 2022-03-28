@@ -77,7 +77,7 @@ class BallChaser:
         return self._request("GET", f"{self._bc_url}/replays/{replay_id}").json()
 
     # TODO: use Enums for args where appropriate
-    def get_replays(
+    def list_replays(
         self,
         player_name: Optional[Union[str, list]] = None,
         player_id: Optional[Union[str, list]] = None,
@@ -99,9 +99,9 @@ class BallChaser:
         count: Optional[int] = None,
         sort_by: Optional[int] = None,
         sort_dir: Optional[int] = None,
-    ) -> Iterator:
+    ) -> Iterator[Dict]:
         """
-        Filter and retrieve replays. At least one of player_name or player_id must be
+        Filter and list replays. At least one of player_name or player_id must be
         supplied.
 
         This endpoint is rate limited to:

@@ -178,11 +178,11 @@ def test_ball_chaser_get_replay(
         assert actual == mock_json
 
 
-def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
+def test_ball_chaser_list_replays_no_player_name_or_id(ball_chaser: BallChaser):
     with pytest.raises(
         Exception, match="At least one of 'player_name' or 'player_id' must be supplied"
     ):
-        next(ball_chaser.get_replays())
+        next(ball_chaser.list_replays())
 
 
 @pytest.mark.parametrize(
@@ -309,7 +309,7 @@ def test_ball_chaser_get_replays_no_player_name_or_id(ball_chaser: BallChaser):
         ),
     ),
 )
-def test_ball_chaser_get_replays(
+def test_ball_chaser_list_replays(
     replay_count: int,
     mock_responses: list,
     expected: dict,
@@ -320,7 +320,7 @@ def test_ball_chaser_get_replays(
         rm.get("https://ballchasing.com/api/replays", response_list=mock_responses)
         actual = [
             replay
-            for replay in ball_chaser.get_replays(
+            for replay in ball_chaser.list_replays(
                 player_name="GarrettG", replay_count=replay_count
             )
         ]
