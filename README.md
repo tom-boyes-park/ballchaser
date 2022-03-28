@@ -1,7 +1,12 @@
 # ballchaser ⚽️🚗
+
+![PyPI](https://img.shields.io/pypi/v/ballchaser)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat)](https://pycqa.github.io/isort/)
+
 Unofficial Python API client for the ballchasing.com API.
 
-# Getting Started
+# Usage
 ```commandline
 pip install ballchaser
 ```
@@ -21,8 +26,12 @@ replays = [
 ]
 
 # retrieve replay statistics
-relay_stats = [
+replay_stats = [
     ball_chaser.get_replay(replay["id"])
     for replay in replays
 ]
 ```
+
+# Contributing & Feedback
+
+If there are any new features you'd like, or you encounter a bug, you can contribute by opening an issue or submitting a pull request.

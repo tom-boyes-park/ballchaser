@@ -355,7 +355,7 @@ def test_ball_chaser_list_replays(
         ),
     ),
 )
-def test_ball_chaser_upload(
+def test_ball_chaser_upload_replay(
     mock_status_code: int,
     mock_json: dict,
     exception: ContextManager,
@@ -368,7 +368,7 @@ def test_ball_chaser_upload(
             json=mock_json,
         )
         with NamedTemporaryFile() as file:
-            actual = ball_chaser.upload(file.name, "public", "group-123")
+            actual = ball_chaser.upload_replay(file.name, "public", "group-123")
             assert actual == mock_json
 
 
@@ -475,6 +475,7 @@ def test_ball_chaser_download(
         assert not os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
         ball_chaser.download_replay(replay_id)
         assert os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
+        os.remove(Path(os.getcwd(), f"{replay_id}.replay"))
 
         # save to existing directory
         with TemporaryDirectory() as td:
@@ -486,6 +487,8 @@ def test_ball_chaser_download(
         assert not os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
         ball_chaser.download_replay(replay_id, directory="./12345")
         assert os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
+        os.remove(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
+        os.rmdir(Path(os.getcwd(), "./12345"))
 
 
 @pytest.mark.parametrize(
@@ -527,7 +530,7 @@ def test_ball_chaser_create_group(
             name="my-new-group",
             player_identification="by-id",
             team_identification="by-player-clusters",
-            parent="group-parent",
+            parent_group_id="group-parent",
         )
         assert actual == mock_json
 
