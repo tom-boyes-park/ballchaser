@@ -1,4 +1,6 @@
+import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Iterator, Optional, Union
 
 from requests import Response, Session
@@ -245,6 +247,25 @@ class BallChaser:
         return self._request(
             "PATCH", f"{self._bc_url}/replays/{replay_id}", data=kwargs
         )
+
+    def download_replay(
+        self, replay_id: str, directory: Optional[str] = os.getcwd()
+    ) -> None:
+        """
+        Download a replay from ballchasing.com, writing it to a .replay file.
+
+        Optionally provide the path to the directory into which to save the replay.
+        Defaults to current working directory if not specified.
+
+        Args:
+            replay_id: id of the replay to download
+            directory: directory into which the replay will be saved
+        """
+        response = self._request("GET", f"{self._bc_url}/replays/{replay_id}/file")
+        d = Path(directory)
+        d.mkdir(parents=True, exist_ok=True)
+        with open(Path(d, f"{replay_id}.replay"), "wb") as file:
+            file.write(response.content)
 
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"
