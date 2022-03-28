@@ -273,7 +273,7 @@ class BallChaser:
         player_identification: str,
         team_identification: str,
         parent: Optional[str] = None,
-    ):
+    ) -> Dict:
         """
         Create a new replay group.
 
