@@ -355,7 +355,7 @@ def test_ball_chaser_list_replays(
         ),
     ),
 )
-def test_ball_chaser_upload(
+def test_ball_chaser_upload_replay(
     mock_status_code: int,
     mock_json: dict,
     exception: ContextManager,
@@ -368,7 +368,7 @@ def test_ball_chaser_upload(
             json=mock_json,
         )
         with NamedTemporaryFile() as file:
-            actual = ball_chaser.upload(file.name, "public", "group-123")
+            actual = ball_chaser.upload_replay(file.name, "public", "group-123")
             assert actual == mock_json
 
 

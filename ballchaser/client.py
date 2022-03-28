@@ -205,7 +205,9 @@ class BallChaser:
             yield from replays[:remaining]
             remaining = replay_count - len(replays)
 
-    def upload(self, path: str, visibility: str = "public", group: str = None) -> Dict:
+    def upload_replay(
+        self, path: str, visibility: str = "public", group: str = None
+    ) -> Dict:
         """
         Upload replay file at `path` to ballchasing.com.
 
