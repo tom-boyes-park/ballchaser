@@ -368,5 +368,14 @@ class BallChaser:
             yield from groups[:remaining]
             remaining = group_count - len(groups)
 
+    def get_group(self, group_id: str) -> Dict:
+        """
+        Retrieve group metadata.
+
+        Args:
+            group_id: id of group
+        """
+        return self._request("GET", f"{self._bc_url}/groups/{group_id}").json()
+
     def __repr__(self):
         return f"BallChaser(patronage={self.patronage})"
