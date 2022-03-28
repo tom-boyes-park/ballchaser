@@ -475,6 +475,7 @@ def test_ball_chaser_download(
         assert not os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
         ball_chaser.download_replay(replay_id)
         assert os.path.isfile(Path(os.getcwd(), f"{replay_id}.replay"))
+        os.remove(Path(os.getcwd(), f"{replay_id}.replay"))
 
         # save to existing directory
         with TemporaryDirectory() as td:
@@ -486,6 +487,8 @@ def test_ball_chaser_download(
         assert not os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
         ball_chaser.download_replay(replay_id, directory="./12345")
         assert os.path.isfile(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
+        os.remove(Path(os.getcwd(), "./12345", f"{replay_id}.replay"))
+        os.rmdir(Path(os.getcwd(), "./12345"))
 
 
 @pytest.mark.parametrize(
