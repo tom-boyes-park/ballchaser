@@ -15,6 +15,7 @@ All API requests are exposed via the `BallChaser` class which is initialised wit
 
 ```python
 import os
+
 from ballchaser.client import BallChaser
 
 ball_chaser = BallChaser(os.getenv("BALLCHASING_API_TOKEN"))
@@ -30,6 +31,17 @@ replay_stats = [
     ball_chaser.get_replay(replay["id"])
     for replay in replays
 ]
+```
+
+API requests can automatically be retried if they return a rate limit response by specifying `backoff=True`. Requests
+will be tried up to `max_tries` times with exponential backoff between subsequent retries, e.g.
+
+```python
+import os
+
+from ballchaser.client import BallChaser
+
+ball_chaser = BallChaser(os.getenv("BALLCHASING_API_TOKEN"), backoff=True, max_tries=5)
 ```
 
 # Contributing & Feedback
