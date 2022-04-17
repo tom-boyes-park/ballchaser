@@ -10,6 +10,7 @@ repository = "https://github.com/tom-boyes-park/ballchaser"
 [tool.poetry.dependencies]
 python = ">=3.7,<4.0"
 requests = "^2.27.1"
+backoff = "^1.11.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.1.0"

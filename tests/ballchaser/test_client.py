@@ -8,34 +8,7 @@ import pytest
 from requests import Response
 from requests_mock import Mocker as RequestsMocker
 
-from ballchaser.client import BallChaser
-
-
-@pytest.mark.parametrize(
-    argnames=["mock_status_code", "mock_json", "exception"],
-    argvalues=(
-        (200, {"chaser": True, "type": "regular"}, does_not_raise()),
-        (
-            401,
-            {"error": "Invalid API key."},
-            pytest.raises(Exception, match="Invalid API key."),
-        ),
-        (
-            500,
-            {"error": "Internal server error."},
-            pytest.raises(Exception, match="Internal server error."),
-        ),
-    ),
-)
-def test_ball_chaser___init__(
-    mock_status_code: int, mock_json: dict, exception: ContextManager
-):
-    with RequestsMocker() as rm, exception:
-        rm.get(
-            "https://ballchasing.com/api", status_code=mock_status_code, json=mock_json
-        )
-        ball_chaser = BallChaser("abc-123")
-        assert ball_chaser.patronage == mock_json["type"]
+from ballchaser.client import BallChaser, RateLimitException
 
 
 @pytest.mark.parametrize(
@@ -54,6 +27,12 @@ def test_ball_chaser___init__(
             400,
             {"error": "bad request"},
             pytest.raises(Exception, match='{"error": "bad request"}'),
+        ),
+        (
+            "http://abc.com",
+            429,
+            {"error": "too many requests"},
+            pytest.raises(RateLimitException, match='{"error": "too many requests"}'),
         ),
         (
             "http://def.com",
@@ -79,6 +58,61 @@ def test_ball_chaser__request(
         actual = ball_chaser._request("GET", url, {"a": 1})
         assert isinstance(actual, Response)
         assert actual.json() == mock_json
+
+
+@pytest.mark.parametrize(
+    argnames=["mock_responses", "expected_json", "exception"],
+    argvalues=[
+        (
+            [
+                {
+                    "status_code": 200,
+                    "json": {"key": "value"},
+                }
+            ],
+            {"key": "value"},
+            does_not_raise(),
+        ),
+        (
+            [
+                {
+                    "status_code": 429,
+                    "json": {"error": "too many requests"},
+                },
+                {
+                    "status_code": 200,
+                    "json": {"key1": "value1"},
+                },
+            ],
+            {"key1": "value1"},
+            does_not_raise(),
+        ),
+        (
+            [
+                {
+                    "status_code": 429,
+                    "json": {"error": "too many requests"},
+                },
+                {
+                    "status_code": 429,
+                    "json": {"error": "too many requests"},
+                },
+            ],
+            None,
+            pytest.raises(RateLimitException, match='{"error": "too many requests"}'),
+        ),
+    ],
+)
+def test_ball_chaser__request_backoff(
+    mock_responses, expected_json, exception, ball_chaser
+):
+    url = "https://ballchasing.com/api"
+    ball_chaser = BallChaser("abc", max_tries=2)
+    with RequestsMocker() as rm, exception:
+        rm.get(url=url, response_list=mock_responses)
+        actual = ball_chaser._request_backoff("GET", url)
+        assert isinstance(actual, Response)
+        assert actual.json() == expected_json
 
 
 @pytest.mark.parametrize(

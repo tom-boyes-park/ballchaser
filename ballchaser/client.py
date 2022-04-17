@@ -3,25 +3,35 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, Optional, Union
 
+from backoff import expo, on_exception
 from requests import Response, Session
 
 
-# TODO: implement rate limiting based on patronage
+class RateLimitException(Exception):
+    pass
+
+
 class BallChaser:
     _bc_url = "https://ballchasing.com/api"
 
-    def __init__(self, token: str):
+    def __init__(self, token: str, backoff: bool = False, max_tries: int = 10):
+        """
+        Args:
+            token: ballchasing.com API token
+            backoff: whether to retry API requests that run into rate limit errors
+            max_tries: maximum number of attempts a request will be made if retrying
+                request due to rate limit errors
+        """
         self.session = Session()
         self.session.headers["Authorization"] = token
-        self._set_patronage()
+        self.backoff = backoff
 
-    def _set_patronage(self) -> None:
-        """
-        Determine and set patron level so that we know what rate limits to apply
-        when hitting endpoints.
-        """
-        response = self.ping()
-        self.patronage = response["type"]
+        # Wrapper around helper method for API requests that will retry request if rate
+        # limit is exceeded. Requests will be tried up to max_tries times with
+        # exponential backoff between subsequent retries.
+        self._request_backoff = on_exception(
+            expo, RateLimitException, max_tries=max_tries, jitter=None
+        )(self._request)
 
     def _request(
         self, method: str, url: str, params: Optional[Dict[str, Any]] = None, **kwargs
@@ -37,36 +47,39 @@ class BallChaser:
         Returns:
             Response
         """
+
         response = self.session.request(url=url, method=method, params=params, **kwargs)
         if not (200 <= response.status_code < 300):
+            if response.status_code == 429:
+                raise RateLimitException(response.text)
             raise Exception(response.text)
 
         return response
+
+    def __request(
+        self, method: str, url: str, params: Optional[Dict[str, Any]] = None, **kwargs
+    ):
+        if self.backoff:
+            return self._request_backoff(method, url, params, **kwargs)
+
+        return self._request(method, url, params, **kwargs)
 
     def ping(self) -> Dict:
         """
         Can be used to check if your API key is correct and if ballchasing API is
         reachable.
         """
-        return self._request("GET", self._bc_url).json()
+        return self.__request("GET", self._bc_url).json()
 
     def get_maps(self) -> Dict:
         """
         Get dict of map codes to map names (map as in stadium).
         """
-        return self._request("GET", f"{self._bc_url}/maps").json()
+        return self.__request("GET", f"{self._bc_url}/maps").json()
 
     def get_replay(self, replay_id: str) -> Dict:
         """
         Retrieve the details and stats of the supplied replay id.
-
-        This endpoint is rate limited to:
-
-        - GC patrons: 16 calls/second
-        - Champion patrons: 8 calls/second
-        - Diamond patrons: 4 calls/second, 5000/hour
-        - Gold patrons: 2 calls/second, 2000/hour
-        - All others: 2 calls/second, 1000/hour
 
         Args:
             replay_id: unique identifier of replay to retrieve
@@ -74,7 +87,7 @@ class BallChaser:
         Returns:
             dict containing replay details and stats
         """
-        return self._request("GET", f"{self._bc_url}/replays/{replay_id}").json()
+        return self.__request("GET", f"{self._bc_url}/replays/{replay_id}").json()
 
     # TODO: use Enums for args where appropriate
     def list_replays(
@@ -103,14 +116,6 @@ class BallChaser:
         """
         Filter and list replays. At least one of player_name or player_id must be
         supplied.
-
-        This endpoint is rate limited to:
-
-        - GC patrons: 16 calls/second
-        - Champion patrons: 8 calls/second
-        - Diamond patrons: 4 calls/second, 2000/hour
-        - Gold patrons: 2 calls/second, 1000/hour
-        - All others: 2 calls/second, 500/hour
 
         Args:
             player_name: filter replays by a player’s name
@@ -190,14 +195,14 @@ class BallChaser:
             "sort-by": sort_by,
             "sort-dir": sort_dir,
         }
-        r = self._request("GET", f"{self._bc_url}/replays", params=params)
+        r = self.__request("GET", f"{self._bc_url}/replays", params=params)
 
         replays = r.json()["list"]
         yield from replays[:replay_count]
 
         remaining = replay_count - len(replays)
         while remaining > 0 and "next" in r.json():
-            r = self._request(
+            r = self.__request(
                 "GET", r.json()["next"], params={"count": min(remaining, 200)}
             )
 
@@ -217,7 +222,7 @@ class BallChaser:
             group_id: id of the group to assign to the uploaded replay
         """
         with open(path, "rb") as file:
-            response = self._request(
+            response = self.__request(
                 "POST",
                 f"{self._bc_url}/v2/upload",
                 params={"visibility": visibility, "group": group_id},
@@ -235,7 +240,7 @@ class BallChaser:
         Args:
             replay_id: id of the replay to delete
         """
-        return self._request("DELETE", f"{self._bc_url}/replays/{replay_id}")
+        return self.__request("DELETE", f"{self._bc_url}/replays/{replay_id}")
 
     def patch_replay(self, replay_id: str, **kwargs) -> Response:
         """
@@ -246,7 +251,7 @@ class BallChaser:
             replay_id: id of replay to patch
             **kwargs: fields to patch with new values
         """
-        return self._request(
+        return self.__request(
             "PATCH", f"{self._bc_url}/replays/{replay_id}", json=kwargs
         )
 
@@ -263,7 +268,7 @@ class BallChaser:
             replay_id: id of the replay to download
             directory: directory into which the replay will be saved
         """
-        response = self._request("GET", f"{self._bc_url}/replays/{replay_id}/file")
+        response = self.__request("GET", f"{self._bc_url}/replays/{replay_id}/file")
         d = Path(directory)
         d.mkdir(parents=True, exist_ok=True)
         with open(Path(d, f"{replay_id}.replay"), "wb") as file:
@@ -293,7 +298,7 @@ class BallChaser:
                 `by-player-clusters`.
             parent_group_id: id of the group to use as parent group for new group
         """
-        return self._request(
+        return self.__request(
             "POST",
             f"{self._bc_url}/groups",
             json={
@@ -317,14 +322,6 @@ class BallChaser:
     ) -> Iterator[Dict]:
         """
         Filter and list replay groups.
-
-        This endpoint is rate limited to:
-
-        - GC patrons: 16 calls/second
-        - Champion patrons: 8 calls/second
-        - Diamond patrons: 4 calls/second, 2000/hour
-        - Gold patrons: 2 calls/second, 1000/hour
-        - All others: 2 calls/second, 500/hour
 
         Args:
             name: filter groups by name
@@ -355,14 +352,14 @@ class BallChaser:
             "sort-by": sort_by,
             "sort-dir": sort_dir,
         }
-        r = self._request("GET", f"{self._bc_url}/groups", params=params)
+        r = self.__request("GET", f"{self._bc_url}/groups", params=params)
 
         groups = r.json()["list"]
         yield from groups[:group_count]
 
         remaining = group_count - len(groups)
         while remaining > 0 and "next" in r.json():
-            r = self._request(
+            r = self.__request(
                 "GET", r.json()["next"], params={"count": min(remaining, 200)}
             )
 
@@ -377,7 +374,7 @@ class BallChaser:
         Args:
             group_id: id of group
         """
-        return self._request("GET", f"{self._bc_url}/groups/{group_id}").json()
+        return self.__request("GET", f"{self._bc_url}/groups/{group_id}").json()
 
     def delete_group(self, group_id: str) -> Response:
         """
@@ -388,7 +385,7 @@ class BallChaser:
         Args:
             group_id: id of the group to delete
         """
-        return self._request("DELETE", f"{self._bc_url}/groups/{group_id}")
+        return self.__request("DELETE", f"{self._bc_url}/groups/{group_id}")
 
     def patch_group(self, group_id: str, **kwargs) -> Response:
         """
@@ -399,7 +396,4 @@ class BallChaser:
             group_id: id of group to patch
             **kwargs: fields to patch with new values
         """
-        return self._request("PATCH", f"{self._bc_url}/groups/{group_id}", json=kwargs)
-
-    def __repr__(self):
-        return f"BallChaser(patronage={self.patronage})"
+        return self.__request("PATCH", f"{self._bc_url}/groups/{group_id}", json=kwargs)
