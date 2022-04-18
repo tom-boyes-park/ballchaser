@@ -60,6 +60,13 @@ class BallChaser:
         "champion-3",
         "grand-champion",
     }
+    _match_results = {"win", "loss"}
+    _visibilities = {"public", "unlisted", "private"}
+    _player_identifications = {"by-id", "by-name"}
+    _team_identifications = {"by-distinct-players", "by-player-clusters"}
+    _sort_by_replays = {"replay-date", "upload-date"}
+    _sort_by_groups = {"created", "name"}
+    _sort_dir = {"asc", "desc"}
 
     def __init__(self, token: str, backoff: bool = False, max_tries: int = 10):
         """
@@ -154,7 +161,6 @@ class BallChaser:
         """
         return self.__request("GET", f"{self._bc_url}/replays/{replay_id}").json()
 
-    # TODO: use Enums for args where appropriate
     def list_replays(
         self,
         player_name: Optional[Union[str, list]] = None,
@@ -175,8 +181,8 @@ class BallChaser:
         replay_date_before: Optional[datetime] = None,
         replay_date_after: Optional[datetime] = None,
         count: Optional[int] = None,
-        sort_by: Optional[int] = None,
-        sort_dir: Optional[int] = None,
+        sort_by: Optional[str] = "upload-date",
+        sort_dir: Optional[str] = "desc",
     ) -> Iterator[Dict]:
         """
         Filter and list replays. At least one of player_name or player_id must be
@@ -225,11 +231,14 @@ class BallChaser:
         if playlist is not None:
             self._check_param(playlist, self._playlists, "playlist")
         if match_result is not None:
-            self._check_param(match_result, {"win", "loss"}, "match_result")
+            self._check_param(match_result, self._match_results, "match_result")
         if min_rank is not None:
             self._check_param(min_rank, self._ranks, "min_rank")
         if max_rank is not None:
             self._check_param(max_rank, self._ranks, "max_rank")
+
+        self._check_param(sort_by, self._sort_by_replays, "sort_by")
+        self._check_param(sort_dir, self._sort_dir, "sort_dir")
 
         created_before = (
             created_before if created_before is None else created_before.isoformat()
@@ -295,7 +304,7 @@ class BallChaser:
             visibility: public, unlisted or private
             group_id: id of the group to assign to the uploaded replay
         """
-        self._check_param(visibility, {"public", "unlisted", "private"}, "visibility")
+        self._check_param(visibility, self._visibilities, "visibility")
         with open(path, "rb") as file:
             response = self.__request(
                 "POST",
@@ -374,11 +383,11 @@ class BallChaser:
             parent_group_id: id of the group to use as parent group for new group
         """
         self._check_param(
-            player_identification, {"by-id", "by-name"}, "player_identification"
+            player_identification, self._player_identifications, "player_identification"
         )
         self._check_param(
             team_identification,
-            {"by-distinct-players", "by-player-clusters"},
+            self._team_identifications,
             "team_identification",
         )
         return self.__request(
@@ -420,8 +429,8 @@ class BallChaser:
         Returns:
             iterator of dicts
         """
-        self._check_param(sort_by, {"created", "name"}, "sort_by")
-        self._check_param(sort_dir, {"asc", "desc"}, "sort_dir")
+        self._check_param(sort_by, self._sort_by, "sort_by")
+        self._check_param(sort_dir, self._sort_dir, "sort_dir")
         created_before = (
             created_before if created_before is None else created_before.isoformat()
         )
