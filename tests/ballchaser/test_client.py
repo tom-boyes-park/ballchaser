@@ -1,4 +1,5 @@
 import os.path
+import re
 from contextlib import nullcontext as does_not_raise
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -9,6 +10,55 @@ from requests import Response
 from requests_mock import Mocker as RequestsMocker
 
 from ballchaser.client import BallChaser, RateLimitException
+
+
+@pytest.mark.parametrize(
+    argnames=["param", "allowed_values", "param_name", "exception"],
+    argvalues=[
+        (
+            [1, 2, 3],
+            [1, 2, 3],
+            "numbers",
+            does_not_raise(),
+        ),
+        (
+            1,
+            [1, 2, 3],
+            "numbers",
+            does_not_raise(),
+        ),
+        (
+            1,
+            {1, 2, 3},
+            "numbers",
+            does_not_raise(),
+        ),
+        (["a", "b", "c"], {"a", "b", "c"}, "letters", does_not_raise()),
+        (
+            123,
+            {1, 2, 3},
+            "numbers",
+            pytest.raises(
+                ValueError,
+                match=re.escape("'numbers' value(s) must be one of {1, 2, 3}, got 123"),
+            ),
+        ),
+        (
+            "a",
+            {"b"},
+            "letters",
+            pytest.raises(
+                ValueError,
+                match=re.escape("'letters' value(s) must be one of {'b'}, got a"),
+            ),
+        ),
+    ],
+)
+def test_ball_chaser__check_param(
+    param, allowed_values, param_name, exception, ball_chaser
+):
+    with exception:
+        ball_chaser._check_param(param, allowed_values, param_name)
 
 
 @pytest.mark.parametrize(

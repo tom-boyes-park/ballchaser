@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, Union
 
 from backoff import expo, on_exception
 from requests import Response, Session
@@ -13,6 +13,60 @@ class RateLimitException(Exception):
 
 class BallChaser:
     _bc_url = "https://ballchasing.com/api"
+    _playlists = {
+        "unranked-duels",
+        "unranked-doubles",
+        "unranked-standard",
+        "unranked-chaos",
+        "private",
+        "season",
+        "offline",
+        "ranked-duels",
+        "ranked-doubles",
+        "ranked-solo-standard",
+        "ranked-standard",
+        "snowday",
+        "rocketlabs",
+        "hoops",
+        "rumble",
+        "tournament",
+        "dropshot",
+        "ranked-hoops",
+        "ranked-rumble",
+        "ranked-dropshot",
+        "ranked-snowday",
+        "dropshot-rumble",
+        "heatseeker",
+    }
+    _ranks = {
+        "unranked",
+        "bronze-1",
+        "bronze-2",
+        "bronze-3",
+        "silver-1",
+        "silver-2",
+        "silver-3",
+        "gold-1",
+        "gold-2",
+        "gold-3",
+        "platinum-1",
+        "platinum-2",
+        "platinum-3",
+        "diamond-1",
+        "diamond-2",
+        "diamond-3",
+        "champion-1",
+        "champion-2",
+        "champion-3",
+        "grand-champion",
+    }
+    _match_results = {"win", "loss"}
+    _visibilities = {"public", "unlisted", "private"}
+    _player_identifications = {"by-id", "by-name"}
+    _team_identifications = {"by-distinct-players", "by-player-clusters"}
+    _sort_by_replays = {"created", "replay-date"}
+    _sort_by_groups = {"created", "name"}
+    _sort_dir = {"asc", "desc"}
 
     def __init__(self, token: str, backoff: bool = False, max_tries: int = 10):
         """
@@ -32,6 +86,24 @@ class BallChaser:
         self._request_backoff = on_exception(
             expo, RateLimitException, max_tries=max_tries, jitter=None
         )(self._request)
+
+    @staticmethod
+    def _check_param(
+        param: Any,
+        allowed_values: Union[List, Set],
+        param_name: str,
+    ) -> None:
+        """
+        Validates that the items in `param` exist in `allowed_values` raising a
+        ValueError if not.
+        """
+        param = [param] if not isinstance(param, (list, set)) else param
+        for item in param:
+            if item not in allowed_values:
+                raise ValueError(
+                    f"'{param_name}' value(s) must be one of {allowed_values}, "
+                    f"got {item}"
+                )
 
     def _request(
         self, method: str, url: str, params: Optional[Dict[str, Any]] = None, **kwargs
@@ -89,7 +161,6 @@ class BallChaser:
         """
         return self.__request("GET", f"{self._bc_url}/replays/{replay_id}").json()
 
-    # TODO: use Enums for args where appropriate
     def list_replays(
         self,
         player_name: Optional[Union[str, list]] = None,
@@ -110,8 +181,8 @@ class BallChaser:
         replay_date_before: Optional[datetime] = None,
         replay_date_after: Optional[datetime] = None,
         count: Optional[int] = None,
-        sort_by: Optional[int] = None,
-        sort_dir: Optional[int] = None,
+        sort_by: Optional[str] = "created",
+        sort_dir: Optional[str] = "desc",
     ) -> Iterator[Dict]:
         """
         Filter and list replays. At least one of player_name or player_id must be
@@ -146,7 +217,7 @@ class BallChaser:
             replay_date_before: only include replays for games before this date
             replay_date_after: only include replays for games after this date
             count: number of replays to retrieve (max 200) in each batch
-            sort_by: how to sort replays ('replay-date' or 'upload-date')
+            sort_by: how to sort replays ('created' or 'replay-date')
             sort_dir: sort direction ('asc' or 'desc')
 
         Returns:
@@ -156,6 +227,18 @@ class BallChaser:
             raise Exception(
                 "At least one of 'player_name' or 'player_id' must be supplied"
             )
+
+        if playlist is not None:
+            self._check_param(playlist, self._playlists, "playlist")
+        if match_result is not None:
+            self._check_param(match_result, self._match_results, "match_result")
+        if min_rank is not None:
+            self._check_param(min_rank, self._ranks, "min_rank")
+        if max_rank is not None:
+            self._check_param(max_rank, self._ranks, "max_rank")
+
+        self._check_param(sort_by, self._sort_by_replays, "sort_by")
+        self._check_param(sort_dir, self._sort_dir, "sort_dir")
 
         created_before = (
             created_before if created_before is None else created_before.isoformat()
@@ -221,6 +304,7 @@ class BallChaser:
             visibility: public, unlisted or private
             group_id: id of the group to assign to the uploaded replay
         """
+        self._check_param(visibility, self._visibilities, "visibility")
         with open(path, "rb") as file:
             response = self.__request(
                 "POST",
@@ -298,6 +382,14 @@ class BallChaser:
                 `by-player-clusters`.
             parent_group_id: id of the group to use as parent group for new group
         """
+        self._check_param(
+            player_identification, self._player_identifications, "player_identification"
+        )
+        self._check_param(
+            team_identification,
+            self._team_identifications,
+            "team_identification",
+        )
         return self.__request(
             "POST",
             f"{self._bc_url}/groups",
@@ -337,6 +429,8 @@ class BallChaser:
         Returns:
             iterator of dicts
         """
+        self._check_param(sort_by, self._sort_by_groups, "sort_by")
+        self._check_param(sort_dir, self._sort_dir, "sort_dir")
         created_before = (
             created_before if created_before is None else created_before.isoformat()
         )
