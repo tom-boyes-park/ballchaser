@@ -64,7 +64,7 @@ class BallChaser:
     _visibilities = {"public", "unlisted", "private"}
     _player_identifications = {"by-id", "by-name"}
     _team_identifications = {"by-distinct-players", "by-player-clusters"}
-    _sort_by_replays = {"replay-date", "upload-date"}
+    _sort_by_replays = {"created", "replay-date"}
     _sort_by_groups = {"created", "name"}
     _sort_dir = {"asc", "desc"}
 
@@ -181,7 +181,7 @@ class BallChaser:
         replay_date_before: Optional[datetime] = None,
         replay_date_after: Optional[datetime] = None,
         count: Optional[int] = None,
-        sort_by: Optional[str] = "upload-date",
+        sort_by: Optional[str] = "created",
         sort_dir: Optional[str] = "desc",
     ) -> Iterator[Dict]:
         """
@@ -217,7 +217,7 @@ class BallChaser:
             replay_date_before: only include replays for games before this date
             replay_date_after: only include replays for games after this date
             count: number of replays to retrieve (max 200) in each batch
-            sort_by: how to sort replays ('replay-date' or 'upload-date')
+            sort_by: how to sort replays ('created' or 'replay-date')
             sort_dir: sort direction ('asc' or 'desc')
 
         Returns:
@@ -429,7 +429,7 @@ class BallChaser:
         Returns:
             iterator of dicts
         """
-        self._check_param(sort_by, self._sort_by, "sort_by")
+        self._check_param(sort_by, self._sort_by_groups, "sort_by")
         self._check_param(sort_dir, self._sort_dir, "sort_dir")
         created_before = (
             created_before if created_before is None else created_before.isoformat()
