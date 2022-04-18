@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, Union
 
 from backoff import expo, on_exception
 from requests import Response, Session
@@ -13,6 +13,53 @@ class RateLimitException(Exception):
 
 class BallChaser:
     _bc_url = "https://ballchasing.com/api"
+    _playlists = {
+        "unranked-duels",
+        "unranked-doubles",
+        "unranked-standard",
+        "unranked-chaos",
+        "private",
+        "season",
+        "offline",
+        "ranked-duels",
+        "ranked-doubles",
+        "ranked-solo-standard",
+        "ranked-standard",
+        "snowday",
+        "rocketlabs",
+        "hoops",
+        "rumble",
+        "tournament",
+        "dropshot",
+        "ranked-hoops",
+        "ranked-rumble",
+        "ranked-dropshot",
+        "ranked-snowday",
+        "dropshot-rumble",
+        "heatseeker",
+    }
+    _ranks = {
+        "unranked",
+        "bronze-1",
+        "bronze-2",
+        "bronze-3",
+        "silver-1",
+        "silver-2",
+        "silver-3",
+        "gold-1",
+        "gold-2",
+        "gold-3",
+        "platinum-1",
+        "platinum-2",
+        "platinum-3",
+        "diamond-1",
+        "diamond-2",
+        "diamond-3",
+        "champion-1",
+        "champion-2",
+        "champion-3",
+        "grand-champion",
+    }
 
     def __init__(self, token: str, backoff: bool = False, max_tries: int = 10):
         """
@@ -32,6 +79,24 @@ class BallChaser:
         self._request_backoff = on_exception(
             expo, RateLimitException, max_tries=max_tries, jitter=None
         )(self._request)
+
+    @staticmethod
+    def _check_param(
+        param: Any,
+        allowed_values: Union[List, Set],
+        param_name: str,
+    ) -> None:
+        """
+        Validates that the items in `param` exist in `allowed_values` raising a
+        ValueError if not.
+        """
+        param = [param] if not isinstance(param, (list, set)) else param
+        for item in param:
+            if item not in allowed_values:
+                raise ValueError(
+                    f"'{param_name}' value(s) must be one of {allowed_values}, "
+                    f"got {item}"
+                )
 
     def _request(
         self, method: str, url: str, params: Optional[Dict[str, Any]] = None, **kwargs
@@ -157,6 +222,15 @@ class BallChaser:
                 "At least one of 'player_name' or 'player_id' must be supplied"
             )
 
+        if playlist is not None:
+            self._check_param(playlist, self._playlists, "playlist")
+        if match_result is not None:
+            self._check_param(match_result, {"win", "loss"}, "match_result")
+        if min_rank is not None:
+            self._check_param(min_rank, self._ranks, "min_rank")
+        if max_rank is not None:
+            self._check_param(max_rank, self._ranks, "max_rank")
+
         created_before = (
             created_before if created_before is None else created_before.isoformat()
         )
@@ -221,6 +295,7 @@ class BallChaser:
             visibility: public, unlisted or private
             group_id: id of the group to assign to the uploaded replay
         """
+        self._check_param(visibility, {"public", "unlisted", "private"}, "visibility")
         with open(path, "rb") as file:
             response = self.__request(
                 "POST",
@@ -298,6 +373,14 @@ class BallChaser:
                 `by-player-clusters`.
             parent_group_id: id of the group to use as parent group for new group
         """
+        self._check_param(
+            player_identification, {"by-id", "by-name"}, "player_identification"
+        )
+        self._check_param(
+            team_identification,
+            {"by-distinct-players", "by-player-clusters"},
+            "team_identification",
+        )
         return self.__request(
             "POST",
             f"{self._bc_url}/groups",
@@ -337,6 +420,8 @@ class BallChaser:
         Returns:
             iterator of dicts
         """
+        self._check_param(sort_by, {"created", "name"}, "sort_by")
+        self._check_param(sort_dir, {"asc", "desc"}, "sort_dir")
         created_before = (
             created_before if created_before is None else created_before.isoformat()
         )

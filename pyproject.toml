@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ballchaser"
-version = "0.7.0"
+version = "0.8.0"
 description = "Unofficial Python API client for the ballchasing.com API."
 authors = ["Tom Boyes-Park"]
 license = "MIT"
